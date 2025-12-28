@@ -1,0 +1,269 @@
+NON-DISCLOSURE AGREEMENT
+(Mutual/Bilateral)
+
+This Non-Disclosure Agreement ("Agreement") is entered into as of December 1, 2024 
+("Effective Date") by and between:
+
+PARTY A:
+InnovateTech Labs Private Limited
+CIN: U72200KA2019PTC125678
+A company incorporated under the Companies Act, 2013
+Registered Office: #234, 4th Floor, Prestige Tech Park, 
+Outer Ring Road, Marathahalli, Bengaluru 560103, Karnataka, India
+Represented by: Mr. Arjun Krishnamurthy, Chief Executive Officer
+(Hereinafter referred to as "InnovateTech")
+
+AND
+
+PARTY B:
+CloudScale Systems Private Limited
+CIN: U72900MH2017PTC287654
+A company incorporated under the Companies Act, 2013
+Registered Office: Unit 501-502, Godrej Eternia, 
+Old Madras Road, Bangalore 560016, Karnataka, India
+Represented by: Ms. Deepika Sharma, Chief Technology Officer
+(Hereinafter referred to as "CloudScale")
+
+(InnovateTech and CloudScale are hereinafter individually referred to as a "Party" 
+and collectively as the "Parties")
+
+RECITALS:
+
+WHEREAS, the Parties wish to explore a potential business relationship concerning 
+the integration of InnovateTech's AI/ML platform with CloudScale's cloud 
+infrastructure services (the "Purpose");
+
+WHEREAS, in connection with the Purpose, each Party may disclose to the other 
+certain confidential and proprietary information;
+
+WHEREAS, the Parties wish to protect such confidential information from 
+unauthorized disclosure;
+
+NOW, THEREFORE, in consideration of the mutual covenants and agreements herein 
+contained, and for other good and valuable consideration, the receipt and 
+sufficiency of which are hereby acknowledged, the Parties agree as follows:
+
+================================================================================
+ARTICLE 1 - DEFINITIONS
+================================================================================
+
+1.1 "Confidential Information" means any and all information, whether written, 
+oral, electronic, visual, or in any other form, that is disclosed by one Party 
+(the "Disclosing Party") to the other Party (the "Receiving Party") and that:
+
+    (a) Is designated as "Confidential," "Proprietary," or with similar legend; or
+    
+    (b) By its nature or the circumstances of disclosure, should reasonably be 
+        understood to be confidential.
+
+1.2 Confidential Information includes, but is not limited to:
+
+    (a) Technical Information: Software code (source and object), algorithms, 
+        APIs, system architecture, technical specifications, product roadmaps, 
+        development plans, and technical documentation;
+    
+    (b) Business Information: Business plans, strategies, financial data, 
+        pricing information, customer lists, vendor information, marketing 
+        plans, and sales data;
+    
+    (c) Operational Information: Internal processes, methodologies, know-how, 
+        and trade secrets;
+    
+    (d) Personnel Information: Employee information, organizational structure, 
+        and compensation data;
+    
+    (e) Legal Information: Contracts, licensing agreements, and legal opinions.
+
+1.3 "Representatives" means a Party's directors, officers, employees, agents, 
+advisors (including attorneys, accountants, consultants, and financial advisors), 
+and affiliates who have a need to know the Confidential Information for the 
+Purpose.
+
+================================================================================
+ARTICLE 2 - EXCLUSIONS FROM CONFIDENTIAL INFORMATION
+================================================================================
+
+2.1 Confidential Information does not include information that:
+
+    (a) Was publicly known at the time of disclosure or becomes publicly known 
+        through no fault or action of the Receiving Party;
+    
+    (b) Was rightfully in the Receiving Party's possession prior to disclosure, 
+        as evidenced by written records;
+    
+    (c) Is rightfully obtained by the Receiving Party from a third party without 
+        restriction and without breach of any confidentiality obligation;
+    
+    (d) Is independently developed by the Receiving Party without use of or 
+        reference to the Confidential Information, as evidenced by written records;
+    
+    (e) Is required to be disclosed by law, regulation, court order, or 
+        governmental authority, provided that the Receiving Party gives the 
+        Disclosing Party prompt written notice to allow the Disclosing Party to 
+        seek protective measures.
+
+================================================================================
+ARTICLE 3 - OBLIGATIONS OF RECEIVING PARTY
+================================================================================
+
+3.1 Non-Disclosure: The Receiving Party shall:
+
+    (a) Hold the Confidential Information in strict confidence;
+    
+    (b) Not disclose the Confidential Information to any third party without 
+        the prior written consent of the Disclosing Party;
+    
+    (c) Protect the Confidential Information using the same degree of care used 
+        to protect its own confidential information, but in no event less than 
+        reasonable care.
+
+3.2 Limited Use: The Receiving Party shall use the Confidential Information 
+solely for the Purpose and for no other purpose whatsoever.
+
+3.3 Limited Disclosure: The Receiving Party may disclose Confidential Information 
+only to its Representatives who:
+
+    (a) Have a need to know for the Purpose;
+    (b) Are informed of the confidential nature of the information; and
+    (c) Are bound by confidentiality obligations at least as restrictive as those 
+        contained herein.
+
+3.4 Responsibility: The Receiving Party shall be responsible for any breach of 
+this Agreement by its Representatives.
+
+3.5 No Copies: The Receiving Party shall not copy or reproduce the Confidential 
+Information except as reasonably necessary for the Purpose.
+
+================================================================================
+ARTICLE 4 - NO LICENSE OR RIGHTS GRANTED
+================================================================================
+
+4.1 No License: Nothing in this Agreement grants the Receiving Party any 
+license, right, title, or interest in the Confidential Information or any 
+intellectual property rights therein.
+
+4.2 Ownership: All Confidential Information remains the exclusive property of 
+the Disclosing Party.
+
+4.3 No Obligation: This Agreement does not obligate either Party to:
+    (a) Enter into any further agreement;
+    (b) Proceed with any business relationship;
+    (c) Disclose any particular Confidential Information.
+
+================================================================================
+ARTICLE 5 - RETURN OR DESTRUCTION OF MATERIALS
+================================================================================
+
+5.1 Upon written request of the Disclosing Party or upon termination of this 
+Agreement, the Receiving Party shall, at the Disclosing Party's option:
+
+    (a) Return all Confidential Information and copies thereof; or
+    
+    (b) Destroy all Confidential Information and copies thereof, and provide 
+        written certification of such destruction.
+
+5.2 Notwithstanding the foregoing, the Receiving Party may retain:
+    (a) Copies required by law or regulation;
+    (b) Archival copies made in accordance with standard backup procedures, 
+        provided such copies remain subject to the confidentiality obligations 
+        herein.
+
+================================================================================
+ARTICLE 6 - TERM AND TERMINATION
+================================================================================
+
+6.1 Term: This Agreement shall commence on the Effective Date and continue for 
+a period of two (2) years, unless earlier terminated.
+
+6.2 Termination: Either Party may terminate this Agreement at any time by 
+providing thirty (30) days' prior written notice to the other Party.
+
+6.3 Survival: The confidentiality obligations under this Agreement shall survive 
+termination and continue for a period of three (3) years from the date of 
+disclosure of the Confidential Information.
+
+================================================================================
+ARTICLE 7 - REMEDIES
+================================================================================
+
+7.1 Injunctive Relief: The Parties acknowledge that a breach of this Agreement 
+may cause irreparable harm for which monetary damages may be inadequate. 
+Accordingly, the Disclosing Party shall be entitled to seek injunctive relief 
+without proof of actual damages and without the posting of bond.
+
+7.2 Other Remedies: The right to seek injunctive relief shall be in addition to, 
+and not in lieu of, any other remedies available at law or in equity.
+
+================================================================================
+ARTICLE 8 - INDEMNIFICATION
+================================================================================
+
+8.1 Each Party (the "Indemnifying Party") shall indemnify, defend, and hold 
+harmless the other Party (the "Indemnified Party") from and against all claims, 
+damages, losses, costs, and expenses (including reasonable attorneys' fees) 
+arising from or relating to any breach of this Agreement by the Indemnifying 
+Party or its Representatives.
+
+================================================================================
+ARTICLE 9 - GENERAL PROVISIONS
+================================================================================
+
+9.1 Governing Law: This Agreement shall be governed by and construed in 
+accordance with the laws of India, without regard to its conflict of laws 
+principles.
+
+9.2 Dispute Resolution:
+    (a) Any dispute arising out of or in connection with this Agreement shall 
+        first be attempted to be resolved through good faith negotiations.
+    
+    (b) If not resolved within thirty (30) days, the dispute shall be referred 
+        to arbitration under the Arbitration and Conciliation Act, 1996, as 
+        amended. The arbitration shall be conducted in Bengaluru by a sole 
+        arbitrator mutually agreed upon by the Parties.
+    
+    (c) The language of arbitration shall be English.
+    
+    (d) The award shall be final and binding.
+
+9.3 Entire Agreement: This Agreement constitutes the entire agreement between 
+the Parties concerning the subject matter hereof and supersedes all prior 
+agreements, understandings, and communications.
+
+9.4 Amendment: This Agreement may only be amended by a written instrument signed 
+by authorized representatives of both Parties.
+
+9.5 Waiver: The failure of either Party to enforce any provision of this 
+Agreement shall not constitute a waiver of such provision or the right to 
+enforce it at a later time.
+
+9.6 Severability: If any provision of this Agreement is held to be invalid or 
+unenforceable, the remaining provisions shall continue in full force and effect.
+
+9.7 Assignment: Neither Party may assign this Agreement without the prior 
+written consent of the other Party, except to an affiliate or in connection 
+with a merger, acquisition, or sale of all or substantially all of its assets.
+
+9.8 Notices: All notices under this Agreement shall be in writing and delivered 
+by hand, registered mail, or email to the addresses set forth above.
+
+9.9 Counterparts: This Agreement may be executed in counterparts, each of which 
+shall be deemed an original.
+
+================================================================================
+
+IN WITNESS WHEREOF, the Parties have caused this Agreement to be executed by 
+their duly authorized representatives as of the Effective Date.
+
+FOR INNOVATETECH LABS PRIVATE LIMITED:
+
+Signature: _________________________
+Name: Arjun Krishnamurthy
+Title: Chief Executive Officer
+Date: December 1, 2024
+
+FOR CLOUDSCALE SYSTEMS PRIVATE LIMITED:
+
+Signature: _________________________
+Name: Deepika Sharma
+Title: Chief Technology Officer
+Date: December 1, 2024

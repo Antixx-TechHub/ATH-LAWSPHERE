@@ -73,31 +73,39 @@ call "%~dp0stop-all.cmd"
 exit /b 0
 
 :start_infrastructure
-echo [INFO] Starting infrastructure services...
+echo [INFO] Starting infrastructure services with docker-compose...
 
-:: Check Podman
-where podman >nul 2>&1
+:: Check Docker
+where docker >nul 2>&1
 if errorlevel 1 (
-    echo [ERROR] Podman is not installed!
+    echo [ERROR] Docker is not installed!
     exit /b 1
 )
 
-:: Create network
-podman network create lawsphere-network 2>nul
+:: Start PostgreSQL and Redis using docker-compose
+echo [INFO] Starting PostgreSQL and Redis...
+docker-compose up -d postgres redis
 
-:: Start PostgreSQL
-podman ps --format "{{.Names}}" | findstr "lawsphere-postgres" >nul 2>&1
+:: Wait for services
+echo [INFO] Waiting for services to be healthy...
+timeout /t 5 /nobreak >nul
+
+:: Verify services are running
+docker ps | findstr "lawsphere-postgres" >nul 2>&1
 if errorlevel 1 (
-    podman ps -a --format "{{.Names}}" | findstr "lawsphere-postgres" >nul 2>&1
-    if errorlevel 1 (
-        echo [INFO] Creating PostgreSQL container...
-        podman run -d --name lawsphere-postgres ^
-            --network lawsphere-network ^
-            -e POSTGRES_USER=lawsphere ^
-            -e POSTGRES_PASSWORD=lawsphere_secret ^
-            -e POSTGRES_DB=lawsphere ^
-            -p 5432:5432 ^
-            -v lawsphere-postgres-data:/var/lib/postgresql/data ^
+    echo [ERROR] Failed to start PostgreSQL
+    exit /b 1
+) else (
+    echo [SUCCESS] PostgreSQL is running
+)
+
+docker ps | findstr "lawsphere-redis" >nul 2>&1
+if errorlevel 1 (
+    echo [ERROR] Failed to start Redis
+    exit /b 1
+) else (
+    echo [SUCCESS] Redis is running
+)
             pgvector/pgvector:pg16
     ) else (
         echo [INFO] Starting existing PostgreSQL container...

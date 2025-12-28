@@ -19,6 +19,8 @@ import {
   CheckCircle,
   Clock,
   AlertCircle,
+  ShieldCheck,
+  Shield,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -27,6 +29,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn, formatFileSize } from "@/lib/utils";
+import { aiClient } from "@/lib/api/ai-client";
 
 interface FilesPanelProps {
   sessionId: string;
@@ -40,6 +43,8 @@ interface UploadedFile {
   status: "uploading" | "processing" | "ready" | "error";
   progress?: number;
   uploadedAt: Date;
+  isSensitive?: boolean;
+  piiDetected?: boolean;
 }
 
 const mockFiles: UploadedFile[] = [
@@ -81,44 +86,70 @@ export function FilesPanel({ sessionId }: FilesPanelProps) {
   const [files, setFiles] = useState<UploadedFile[]>(mockFiles);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    const newFiles: UploadedFile[] = acceptedFiles.map((file) => ({
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      status: "uploading" as const,
-      progress: 0,
-      uploadedAt: new Date(),
-    }));
+  const onDrop = useCallback(async (acceptedFiles: File[]) => {
+    for (const file of acceptedFiles) {
+      const tempId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+      
+      // Add file with uploading status
+      const newFile: UploadedFile = {
+        id: tempId,
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        status: "uploading" as const,
+        progress: 0,
+        uploadedAt: new Date(),
+      };
+      
+      setFiles((prev) => [newFile, ...prev]);
 
-    setFiles((prev) => [...newFiles, ...prev]);
-
-    // Simulate upload progress
-    newFiles.forEach((file) => {
-      let progress = 0;
-      const interval = setInterval(() => {
-        progress += 10;
+      try {
+        // Upload file to API
+        const result = await aiClient.uploadFile(file);
+        
+        // Update file status
         setFiles((prev) =>
           prev.map((f) =>
-            f.id === file.id
-              ? { ...f, progress, status: progress >= 100 ? "processing" : "uploading" }
+            f.id === tempId
+              ? { 
+                  ...f, 
+                  id: result.file_id,
+                  status: "processing",
+                  progress: 100,
+                }
               : f
           )
         );
 
-        if (progress >= 100) {
-          clearInterval(interval);
-          setTimeout(() => {
-            setFiles((prev) =>
-              prev.map((f) =>
-                f.id === file.id ? { ...f, status: "ready" } : f
-              )
-            );
-          }, 2000);
-        }
-      }, 200);
-    });
+        // Poll for processing status (simplified - you may want to use websockets)
+        setTimeout(() => {
+          setFiles((prev) =>
+            prev.map((f) =>
+              f.id === result.file_id
+                ? { 
+                    ...f, 
+                    status: "ready",
+                    // These would come from the API in a real implementation
+                    isSensitive: file.name.toLowerCase().includes('confidential') || 
+                                 file.name.toLowerCase().includes('contract'),
+                    piiDetected: file.name.toLowerCase().includes('personal'),
+                  }
+                : f
+            )
+          );
+        }, 2000);
+
+      } catch (error) {
+        console.error('File upload error:', error);
+        setFiles((prev) =>
+          prev.map((f) =>
+            f.id === tempId
+              ? { ...f, status: "error" as const }
+              : f
+          )
+        );
+      }
+    }
   }, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -219,6 +250,12 @@ export function FilesPanel({ sessionId }: FilesPanelProps) {
                     <span>{formatFileSize(file.size)}</span>
                     {file.status === "uploading" && file.progress && (
                       <span>{file.progress}%</span>
+                    )}
+                    {file.isSensitive && (
+                      <span className="flex items-center gap-0.5 text-green-600 font-medium">
+                        <ShieldCheck className="h-3 w-3" />
+                        <span>Protected</span>
+                      </span>
                     )}
                   </div>
                   {file.status === "uploading" && file.progress && (

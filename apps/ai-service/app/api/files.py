@@ -7,8 +7,29 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Background
 from pydantic import BaseModel
 from enum import Enum
 import uuid
+import io
+from pathlib import Path
+import json
+
+# Import for text extraction
+try:
+    import PyPDF2
+    HAS_PDF_SUPPORT = True
+except ImportError:
+    HAS_PDF_SUPPORT = False
+
+try:
+    from docx import Document
+    HAS_DOCX_SUPPORT = True
+except ImportError:
+    HAS_DOCX_SUPPORT = False
+
+from app.routing.privacy_scanner import PrivacyScanner
+from app.routing.audit_logger import AuditLogger
 
 router = APIRouter()
+privacy_scanner = PrivacyScanner()
+audit_logger = AuditLogger()
 
 
 class FileStatus(str, Enum):
@@ -27,6 +48,9 @@ class FileMetadata(BaseModel):
     status: FileStatus
     extracted_text: Optional[str] = None
     metadata: Optional[dict] = None
+    is_sensitive: Optional[bool] = None
+    pii_detected: Optional[bool] = None
+    sensitivity_score: Optional[float] = None
 
 
 class ProcessingResult(BaseModel):
@@ -95,16 +119,75 @@ async def upload_file(
 async def process_file(file_id: str, content: bytes, mime_type: str):
     """Background task to process uploaded file."""
     try:
-        # TODO: Implement actual file processing
-        # - OCR for images and scanned PDFs
-        # - Text extraction for documents
-        # - Transcription for audio/video
-        # - Entity extraction
-        # - Vector embedding generation
-        pass
+        extracted_text = ""
+        
+        # Extract text based on file type
+        if mime_type == "application/pdf" and HAS_PDF_SUPPORT:
+            extracted_text = extract_text_from_pdf(content)
+        elif mime_type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document" and HAS_DOCX_SUPPORT:
+            extracted_text = extract_text_from_docx(content)
+        elif mime_type == "text/plain":
+            extracted_text = content.decode('utf-8', errors='ignore')
+        else:
+            # For unsupported types, just mark as ready
+            extracted_text = "[Binary file - no text extraction available]"
+        
+        # Scan for sensitive content
+        if extracted_text and extracted_text != "[Binary file - no text extraction available]":
+            scan_result = privacy_scanner.scan(extracted_text)
+            
+            # Log file processing with privacy scan results
+            audit_logger.log_routing_decision(
+                request_type="file_upload",
+                content_hash=audit_logger.hash_content(extracted_text[:500]),
+                is_sensitive=scan_result["is_sensitive"],
+                routed_to="local" if scan_result["is_sensitive"] else "storage",
+                pii_detected=scan_result["pii_detected"],
+                document_type=scan_result["document_types"][0] if scan_result["document_types"] else None,
+                metadata={
+                    "file_id": file_id,
+                    "mime_type": mime_type,
+                    "sensitivity_score": scan_result["sensitivity_score"],
+                }
+            )
+            
+            # TODO: Store metadata in database with sensitivity info
+            # For now, just log it
+            print(f"File {file_id} processed:")
+            print(f"  - Sensitive: {scan_result['is_sensitive']}")
+            print(f"  - PII Detected: {scan_result['pii_detected']}")
+            print(f"  - Sensitivity Score: {scan_result['sensitivity_score']}")
+            print(f"  - Text Length: {len(extracted_text)} chars")
+            
     except Exception as e:
         # Log error and update status
-        pass
+        print(f"Error processing file {file_id}: {str(e)}")
+
+
+def extract_text_from_pdf(content: bytes) -> str:
+    """Extract text from PDF file."""
+    try:
+        pdf_file = io.BytesIO(content)
+        pdf_reader = PyPDF2.PdfReader(pdf_file)
+        text = ""
+        for page in pdf_reader.pages:
+            text += page.extract_text() + "\n"
+        return text.strip()
+    except Exception as e:
+        print(f"Error extracting PDF text: {str(e)}")
+        return ""
+
+
+def extract_text_from_docx(content: bytes) -> str:
+    """Extract text from DOCX file."""
+    try:
+        docx_file = io.BytesIO(content)
+        doc = Document(docx_file)
+        text = "\n".join([paragraph.text for paragraph in doc.paragraphs])
+        return text.strip()
+    except Exception as e:
+        print(f"Error extracting DOCX text: {str(e)}")
+        return ""
 
 
 @router.get("/{file_id}", response_model=FileMetadata)

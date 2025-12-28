@@ -3,6 +3,7 @@ Ollama Client Module
 Handles communication with local Ollama server for privacy-first inference.
 """
 
+import os
 import httpx
 import json
 import asyncio
@@ -12,6 +13,9 @@ from datetime import datetime
 import structlog
 
 logger = structlog.get_logger()
+
+# Ollama base URL from environment (for Docker support)
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 
 
 @dataclass
@@ -59,12 +63,13 @@ class OllamaClient:
     
     def __init__(
         self,
-        base_url: str = "http://localhost:11434",
+        base_url: str = None,
         timeout: float = 300.0  # 5 min timeout for CPU inference
     ):
-        self.base_url = base_url.rstrip("/")
+        self.base_url = (base_url or OLLAMA_BASE_URL).rstrip("/")
         self.timeout = timeout
         self._client: Optional[httpx.AsyncClient] = None
+        logger.info("ollama_client_init", base_url=self.base_url)
         
     async def _get_client(self) -> httpx.AsyncClient:
         """Get or create HTTP client"""

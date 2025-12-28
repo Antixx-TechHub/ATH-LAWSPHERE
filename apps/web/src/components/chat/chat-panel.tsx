@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -25,10 +25,20 @@ import {
   ShieldCheck,
   Cloud,
   Lock,
+  FileText,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
 import { TrustBadge } from "./trust-badge";
+import { aiClient } from "@/lib/api/ai-client";
+
+// Attached document interface
+interface AttachedDocument {
+  name: string;
+  content: string;
+  size: number;
+}
 
 interface ChatPanelProps {
   sessionId: string;
@@ -61,9 +71,12 @@ interface Message {
 }
 
 const AI_MODELS = [
+  // Auto Mode - Recommended for privacy-first automatic routing
+  { id: "auto", name: "🤖 Auto (Recommended)", provider: "Smart", cost: "Optimized", isLocal: null, available: true, isAuto: true },
   // Local Models (Secure) - Ordered by speed on CPU
   { id: "qwen2.5-3b", name: "Qwen 2.5 3B (Fast)", provider: "Local", cost: "FREE", isLocal: true, available: false },
   { id: "qwen2.5-7b", name: "Qwen 2.5 7B", provider: "Local", cost: "FREE", isLocal: true, available: true },
+  { id: "qwen2.5-14b", name: "Qwen 2.5 14B", provider: "Local", cost: "FREE", isLocal: true, available: true },
   { id: "llama3.1-8b", name: "Llama 3.1 8B", provider: "Local", cost: "FREE", isLocal: true, available: true },
   // Cloud Models - Fast and cheap
   { id: "gemini-flash", name: "Gemini 2.0 Flash", provider: "Google", cost: "₹0.006/1K", isLocal: false, available: true },
@@ -84,12 +97,82 @@ const initialMessages: Message[] = [
 export function ChatPanel({ sessionId }: ChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [input, setInput] = useState("");
-  const [selectedModel, setSelectedModel] = useState("gemini-flash");
+  const [selectedModel, setSelectedModel] = useState("auto");
   const [isLoading, setIsLoading] = useState(false);
+  const [sessionCost, setSessionCost] = useState({ totalInr: 0, savedInr: 0, queries: 0 });
+  const [attachedDoc, setAttachedDoc] = useState<AttachedDocument | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  // Handle file attachment
+  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Supported text-based formats
+    const supportedTypes = [
+      'text/plain',
+      'text/markdown',
+      'application/json',
+    ];
+    
+    // Check if it's a text-based file or small enough to read
+    const isTextFile = supportedTypes.includes(file.type) || 
+                       file.name.endsWith('.txt') || 
+                       file.name.endsWith('.md') ||
+                       file.name.endsWith('.json');
+
+    if (!isTextFile && file.size > 100000) {
+      alert('Please use .txt, .md, or .json files for attachment. For PDFs and DOCx, use the Files page.');
+      return;
+    }
+
+    try {
+      const content = await file.text();
+      
+      // Limit content size for context window
+      const maxChars = 50000;
+      const truncatedContent = content.length > maxChars 
+        ? content.substring(0, maxChars) + '\n\n[... Content truncated for size ...]'
+        : content;
+
+      setAttachedDoc({
+        name: file.name,
+        content: truncatedContent,
+        size: file.size,
+      });
+
+      // Add system message about attachment
+      const attachmentMsg: Message = {
+        id: Date.now().toString(),
+        type: 'system',
+        content: `📎 Document attached: **${file.name}** (${(file.size / 1024).toFixed(1)} KB). You can now ask questions about this document.`,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, attachmentMsg]);
+    } catch (error) {
+      alert('Could not read file. Please try a different file.');
+    }
+
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  }, []);
+
+  const handleRemoveAttachment = () => {
+    setAttachedDoc(null);
+    const removeMsg: Message = {
+      id: Date.now().toString(),
+      type: 'system',
+      content: '📎 Document removed from context.',
+      timestamp: new Date(),
+    };
+    setMessages(prev => [...prev, removeMsg]);
   };
 
   useEffect(() => {
@@ -115,42 +198,95 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
     setIsLoading(true);
 
     try {
-      // Call AI service API
-      const response = await fetch('http://localhost:8000/api/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messages: [...messages.filter(m => m.type !== 'system').map(m => ({
-            role: m.type === 'user' ? 'user' : 'assistant',
-            content: m.content,
-          })), { role: 'user', content: input }],
-          model: selectedModel,
-          temperature: 0.7,
-        }),
-      });
+      // Build message content - include document context if attached
+      let userContent = input;
+      if (attachedDoc) {
+        userContent = `[ATTACHED DOCUMENT: ${attachedDoc.name}]
 
-      if (!response.ok) {
-        throw new Error('Failed to get AI response');
+--- DOCUMENT CONTENT START ---
+${attachedDoc.content}
+--- DOCUMENT CONTENT END ---
+
+USER QUESTION: ${input}`;
       }
 
-      const data = await response.json();
+      // Build previous messages for context
+      const prevMessages = messages
+        .filter((m) => m.type !== 'system')
+        .map((m) => {
+          if (!m.content || typeof m.content !== 'string' || !m.content.trim()) {
+            return null;
+          }
+          // Map frontend "ai" type to backend "assistant" role
+          const role = m.type === 'ai' ? 'assistant' : m.type;
+          return {
+            role: role as 'user' | 'assistant',
+            content: m.content,
+          };
+        })
+        .filter((msg): msg is { role: 'user' | 'assistant'; content: string } => 
+          msg !== null && !!msg.role && !!msg.content
+        );
+
+      // Build the final messages array
+      const finalMessages = [
+        ...prevMessages,
+        { role: 'user' as const, content: userContent },
+      ];
       
+      console.log('[Chat] Sending messages:', finalMessages.length, 'messages');
+      console.log('[Chat] Last message content length:', userContent.length);
+      console.log('[Chat] All messages being sent:', JSON.stringify(finalMessages, null, 2));
+
+      // Use Trust Chat API for privacy-aware routing
+      console.log('[Chat] Sending request...');
+      const data = await aiClient.trustChat({
+        messages: finalMessages,
+        model: selectedModel,
+        temperature: 0.7,
+        session_id: sessionId,
+        document_attached: !!attachedDoc,
+      });
+
+      // Debug - log the full response
+      console.log('[Chat] Full response:', data);
+      console.log('[Chat] Full response JSON:', JSON.stringify(data, null, 2));
+      console.log('[Chat] data.message:', data.message);
+      console.log('[Chat] data.message?.content:', data.message?.content);
+      console.log('[Chat] data.message?.content type:', typeof data.message?.content);
+
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
-        type: "ai",
-        content: data.message?.content || data.content || "No response received",
+        type: 'ai',
+        content: data.message?.content || 'No response content received.',
         timestamp: new Date(),
-        model: selectedModel,
+        model: data.model,
+        trust: data.trust,  // Backend sends "trust", not "trust_info"
       };
+      
+      // Debug log
+      console.log('AI Response data:', { 
+        hasMessage: !!data.message, 
+        contentLength: data.message?.content?.length || 0,
+        trust: data.trust?.trust_badge 
+      });
+      
       setMessages((prev) => [...prev, aiMessage]);
+      
+      // Update session cost tracking
+      if (data.cost) {
+        setSessionCost((prev) => ({
+          totalInr: prev.totalInr + (data.cost?.estimated_cost_inr || 0),
+          savedInr: prev.savedInr + (data.cost?.saved_vs_cloud_inr || 0),
+          queries: prev.queries + 1,
+        }));
+      }
     } catch (error) {
       console.error('Chat error:', error);
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: "ai",
-        content: `⚠️ Error connecting to AI service. Make sure the AI service is running at http://localhost:8000 and your ${AI_MODELS.find((m) => m.id === selectedModel)?.name} API key is configured.`,
+        content: `⚠️ Error connecting to AI service. Make sure the AI service is running at http://localhost:8000 and your API keys are configured. Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
         timestamp: new Date(),
         model: selectedModel,
       };
@@ -183,17 +319,58 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
           </div>
         </div>
 
-        {/* Model Selector with Trust Indicators */}
-        <Select value={selectedModel} onValueChange={setSelectedModel}>
-          <SelectTrigger className="w-[200px] h-8 text-xs">
-            <SelectValue placeholder="Select Model" />
-          </SelectTrigger>
-          <SelectContent>
+        {/* Session Cost Display */}
+        <div className="flex items-center gap-3">
+          {sessionCost.queries > 0 && (
+            <div className="flex items-center gap-2 text-xs">
+              <div className="flex flex-col items-end">
+                <span className="text-neutral-500">
+                  {sessionCost.queries} queries
+                </span>
+                <div className="flex items-center gap-1">
+                  {sessionCost.totalInr === 0 ? (
+                    <span className="text-green-600 font-medium">₹0 (FREE)</span>
+                  ) : (
+                    <span className="text-neutral-600">₹{sessionCost.totalInr.toFixed(4)}</span>
+                  )}
+                  {sessionCost.savedInr > 0 && (
+                    <span className="text-green-600 text-[10px]">
+                      (saved ₹{sessionCost.savedInr.toFixed(2)})
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Model Selector with Trust Indicators */}
+          <Select value={selectedModel} onValueChange={setSelectedModel}>
+            <SelectTrigger className="w-[200px] h-8 text-xs">
+              <SelectValue placeholder="Select Model" />
+            </SelectTrigger>
+            <SelectContent>
+            {/* Auto Mode - Recommended */}
+            <div className="px-2 py-1 text-[10px] font-semibold text-purple-600 flex items-center gap-1">
+              <Sparkles className="h-3 w-3" /> SMART AUTO
+            </div>
+            {AI_MODELS.filter(m => m.isAuto).map((model) => (
+              <SelectItem key={model.id} value={model.id}>
+                <div className="flex items-center justify-between w-full gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <Sparkles className="h-3 w-3 text-purple-500" />
+                    <span>{model.name}</span>
+                  </div>
+                  <span className="text-[10px] text-purple-600 font-medium">
+                    {model.cost}
+                  </span>
+                </div>
+              </SelectItem>
+            ))}
             {/* Local Models Group */}
-            <div className="px-2 py-1 text-[10px] font-semibold text-green-600 flex items-center gap-1">
+            <div className="px-2 py-1 text-[10px] font-semibold text-green-600 flex items-center gap-1 mt-1 border-t">
               <Lock className="h-3 w-3" /> SECURE LOCAL
             </div>
-            {AI_MODELS.filter(m => m.isLocal).map((model) => (
+            {AI_MODELS.filter(m => m.isLocal === true).map((model) => (
               <SelectItem key={model.id} value={model.id}>
                 <div className="flex items-center justify-between w-full gap-2">
                   <div className="flex items-center gap-1.5">
@@ -210,7 +387,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
             <div className="px-2 py-1 text-[10px] font-semibold text-blue-600 flex items-center gap-1 mt-1 border-t">
               <Cloud className="h-3 w-3" /> CLOUD
             </div>
-            {AI_MODELS.filter(m => !m.isLocal).map((model) => (
+            {AI_MODELS.filter(m => m.isLocal === false).map((model) => (
               <SelectItem key={model.id} value={model.id}>
                 <div className="flex items-center justify-between w-full gap-2">
                   <div className="flex items-center gap-1.5">
@@ -225,6 +402,7 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
             ))}
           </SelectContent>
         </Select>
+        </div>
       </div>
 
       {/* Messages */}
@@ -288,9 +466,31 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
                     minute: "2-digit",
                   })}
                 </span>
-                {message.model && (
+                {message.trust ? (
+                  /* Show trust info from API */
                   <>
-                    {/* Trust Indicator */}
+                    <span className="text-neutral-400">•</span>
+                    <span 
+                      className={cn(
+                        "flex items-center gap-1 font-medium",
+                        message.trust.is_local ? "text-green-600" : "text-blue-600"
+                      )}
+                      title={message.trust.trust_message}
+                    >
+                      {message.trust.is_local ? (
+                        <><ShieldCheck className="h-3 w-3" /> {message.trust.trust_badge}</>
+                      ) : (
+                        <><Cloud className="h-3 w-3" /> {message.trust.trust_badge}</>
+                      )}
+                    </span>
+                    <span className="text-neutral-400">•</span>
+                    <span className="text-primary-600">
+                      {message.trust.model_used}
+                    </span>
+                  </>
+                ) : message.model && (
+                  /* Fallback to basic model info */
+                  <>
                     {AI_MODELS.find((m) => m.id === message.model)?.isLocal ? (
                       <span className="flex items-center gap-1 text-green-600">
                         <ShieldCheck className="h-3 w-3" />
@@ -308,23 +508,27 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
                     </span>
                   </>
                 )}
-                {/* Show trust info if available */}
-                {message.trust && (
-                  <span 
-                    className={cn(
-                      "flex items-center gap-1",
-                      message.trust.is_local ? "text-green-600" : "text-blue-600"
-                    )}
-                    title={message.trust.trust_message}
-                  >
-                    {message.trust.is_local ? (
-                      <><ShieldCheck className="h-3 w-3" /> Secure</>
-                    ) : (
-                      <><Cloud className="h-3 w-3" /> Cloud</>
-                    )}
-                  </span>
-                )}
               </div>
+
+              {/* Trust Details - Show privacy info if detected */}
+              {message.trust && message.trust.pii_detected && (
+                <div className="mt-2 p-2 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800 rounded text-xs">
+                  <div className="flex items-center gap-1 text-green-700 dark:text-green-400 font-medium mb-1">
+                    <ShieldCheck className="h-3 w-3" />
+                    Privacy Protected
+                  </div>
+                  <div className="text-green-600 dark:text-green-500 text-[11px]">
+                    {message.trust.trust_message}
+                  </div>
+                  {message.trust.trust_details && message.trust.trust_details.length > 0 && (
+                    <ul className="mt-1 space-y-0.5 text-green-600 dark:text-green-500 text-[10px] list-disc list-inside">
+                      {message.trust.trust_details.map((detail, idx) => (
+                        <li key={idx}>{detail}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
 
               {/* AI Message Actions */}
               {message.type === "ai" && (
@@ -373,15 +577,49 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
         onSubmit={handleSubmit}
         className="p-3 border-t border-neutral-200 dark:border-neutral-800"
       >
+        {/* Attached Document Indicator */}
+        {attachedDoc && (
+          <div className="mb-2 flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
+            <FileText className="h-4 w-4 text-blue-600" />
+            <span className="text-sm text-blue-700 dark:text-blue-400 flex-1 truncate">
+              {attachedDoc.name} ({(attachedDoc.size / 1024).toFixed(1)} KB)
+            </span>
+            <Button 
+              type="button" 
+              variant="ghost" 
+              size="icon" 
+              className="h-6 w-6 text-blue-600 hover:text-red-600"
+              onClick={handleRemoveAttachment}
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+        )}
+
         <div className="flex gap-2">
-          <Button type="button" variant="ghost" size="icon" className="h-8 w-8">
+          {/* Hidden file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".txt,.md,.json,text/plain,text/markdown,application/json"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+          <Button 
+            type="button" 
+            variant="ghost" 
+            size="icon" 
+            className={cn("h-8 w-8", attachedDoc && "text-blue-600")}
+            onClick={() => fileInputRef.current?.click()}
+            title="Attach document (.txt, .md, .json)"
+          >
             <Paperclip className="h-4 w-4" />
           </Button>
           <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Ask a legal question..."
+            placeholder={attachedDoc ? "Ask about the attached document..." : "Ask a legal question..."}
             className="min-h-[36px] max-h-24 resize-none text-sm"
             rows={1}
           />
@@ -390,7 +628,9 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
           </Button>
         </div>
         <p className="text-[10px] text-neutral-500 mt-1.5 text-center">
-          Press Enter to send, Shift + Enter for new line
+          {attachedDoc 
+            ? "📎 Document attached • Press Enter to send" 
+            : "Press Enter to send, Shift + Enter for new line • Click 📎 to attach .txt files"}
         </p>
       </form>
     </div>

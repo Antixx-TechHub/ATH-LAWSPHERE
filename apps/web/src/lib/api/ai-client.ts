@@ -3,6 +3,7 @@
  */
 
 const AI_SERVICE_URL = process.env.NEXT_PUBLIC_AI_SERVICE_URL || 'http://localhost:8000';
+console.log('[AIClient] AI_SERVICE_URL configured as:', AI_SERVICE_URL);
 
 interface ChatRequest {
   messages: Array<{
@@ -13,6 +14,7 @@ interface ChatRequest {
   temperature?: number;
   max_tokens?: number;
   session_id?: string;
+  document_attached?: boolean;
 }
 
 interface ChatResponse {
@@ -24,6 +26,42 @@ interface ChatResponse {
     completion_tokens: number;
     total_tokens: number;
   };
+}
+
+interface TrustInfo {
+  is_local: boolean;
+  trust_badge: string;
+  trust_message: string;
+  trust_details: string[];
+  sensitivity_level: string;
+  pii_detected: boolean;
+  document_attached: boolean;
+  model_used: string;
+  model_provider: string;
+  audit_id: string;
+}
+
+interface TrustChatResponse {
+  id: string;
+  message: {
+    role: 'assistant' | 'user' | 'system';
+    content: string;
+  };
+  model?: string;
+  usage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
+  trust: TrustInfo;  // Backend sends "trust", not "trust_info"
+  cost?: {
+    estimated_cost_usd: number;
+    estimated_cost_inr: number;
+    saved_vs_cloud_usd: number;
+    saved_vs_cloud_inr: number;
+  };
+  latency_ms?: number;
+  routing_time_ms?: number;
 }
 
 interface SearchRequest {
@@ -44,6 +82,7 @@ class AIClient {
 
   constructor(baseUrl: string = AI_SERVICE_URL) {
     this.baseUrl = baseUrl;
+    console.log('[AIClient] Initialized with baseUrl:', this.baseUrl);
   }
 
   private async request<T>(
@@ -51,6 +90,7 @@ class AIClient {
     options: RequestInit = {}
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
+    console.log('[AIClient] Request:', url);
 
     const response = await fetch(url, {
       ...options,
@@ -60,12 +100,32 @@ class AIClient {
       },
     });
 
+    console.log('[AIClient] Response status:', response.status);
+
     if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      throw new Error(error.detail || `Request failed: ${response.statusText}`);
+      let errorText = '';
+      try {
+        const error = await response.json();
+        errorText = JSON.stringify(error);
+        console.error('[AIClient] Error response:', error);
+        // Try to extract detail or message
+        throw new Error(error.detail || error.message || errorText || `Request failed: ${response.statusText}`);
+      } catch (e) {
+        // If not JSON, fallback to text
+        const text = await response.text().catch(() => '');
+        throw new Error(text || `Request failed: ${response.statusText}`);
+      }
     }
 
-    return response.json();
+    const data = await response.json();
+    console.log('[AIClient] Response data keys:', Object.keys(data));
+    console.log('[AIClient] Raw response data:', JSON.stringify(data, null, 2));
+    if (data.message) {
+      console.log('[AIClient] data.message:', data.message);
+      console.log('[AIClient] data.message.content:', data.message.content);
+      console.log('[AIClient] content type:', typeof data.message.content);
+    }
+    return data;
   }
 
   /**
@@ -75,6 +135,24 @@ class AIClient {
     return this.request<ChatResponse>('/api/chat/completions', {
       method: 'POST',
       body: JSON.stringify(request),
+    });
+  }
+
+  /**
+   * Send a trust-aware chat completion request (Privacy-First)
+   */
+  async trustChat(request: ChatRequest): Promise<TrustChatResponse> {
+    // Always send all optional fields and ensure messages array is present
+    return this.request<TrustChatResponse>('/api/chat/trust/completions', {
+      method: 'POST',
+      body: JSON.stringify({
+        force_local: false,
+        file_attached: false,
+        file_name: null,
+        file_content: null,
+        ...request,
+        messages: request.messages || [],
+      }),
     });
   }
 
@@ -193,6 +271,30 @@ class AIClient {
    */
   async health(): Promise<{ status: string; version: string }> {
     return this.request('/health');
+  }
+
+  /**
+   * Get trust dashboard metrics
+   */
+  async getTrustDashboard(): Promise<{
+    total_requests: number;
+    local_routed: number;
+    cloud_routed: number;
+    privacy_protection_rate: number;
+    pii_detected_count: number;
+    sensitive_documents: number;
+  }> {
+    return this.request('/api/chat/trust/dashboard');
+  }
+
+  /**
+   * Get available trust models
+   */
+  async getTrustModels(): Promise<{
+    local_models: Array<{ id: string; name: string; status: string }>;
+    cloud_models: Array<{ id: string; name: string; status: string }>;
+  }> {
+    return this.request('/api/chat/trust/models');
   }
 }
 

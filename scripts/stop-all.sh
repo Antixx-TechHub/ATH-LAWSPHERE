@@ -41,9 +41,10 @@ fi
 pkill -f "node server.js" 2>/dev/null || true
 pkill -f "apps/ai-service/main.py" 2>/dev/null || true
 
-# Stop Podman containers
+# Stop Docker containers using docker-compose
 log_info "Stopping infrastructure containers..."
-podman stop lawsphere-postgres lawsphere-redis lawsphere-minio 2>/dev/null || true
+cd "$PROJECT_ROOT"
+docker-compose stop postgres redis 2>/dev/null || true
 
 echo ""
 log_success "All services stopped!"

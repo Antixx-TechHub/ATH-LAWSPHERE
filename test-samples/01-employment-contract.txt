@@ -1,0 +1,144 @@
+EMPLOYMENT AGREEMENT
+
+This Employment Agreement ("Agreement") is entered into as of January 15, 2025, by and between:
+
+EMPLOYER: TechVision Solutions Private Limited
+          A company incorporated under the Companies Act, 2013
+          CIN: U72200MH2018PTC123456
+          Registered Office: Level 5, Tower B, Tech Park, Pune 411057, Maharashtra, India
+          (hereinafter referred to as "Company")
+
+AND
+
+EMPLOYEE: Rahul Sharma
+          PAN: ABCDE1234F
+          Aadhaar: XXXX-XXXX-5678
+          Address: Flat 302, Green Valley Apartments, Baner, Pune 411045
+          (hereinafter referred to as "Employee")
+
+RECITALS:
+WHEREAS, the Company desires to employ the Employee as a Senior Software Engineer; and
+WHEREAS, the Employee desires to be employed by the Company on the terms and conditions set forth herein.
+
+NOW, THEREFORE, in consideration of the mutual covenants contained herein, the parties agree as follows:
+
+ARTICLE 1 - EMPLOYMENT AND DUTIES
+
+1.1 Position: The Employee shall serve as Senior Software Engineer reporting to the Engineering Manager.
+
+1.2 Duties: The Employee shall perform duties including but not limited to:
+    (a) Design and development of software applications
+    (b) Code review and quality assurance
+    (c) Mentoring junior team members
+    (d) Participation in sprint planning and agile ceremonies
+
+1.3 Best Efforts: The Employee agrees to devote their full professional time, attention, and best efforts to the performance of their duties.
+
+ARTICLE 2 - TERM AND TERMINATION
+
+2.1 Commencement Date: The employment shall commence on February 1, 2025.
+
+2.2 At-Will Employment: This employment is "at-will" subject to the notice period specified herein.
+
+2.3 Notice Period: Either party may terminate this Agreement by providing:
+    (a) During probation (first 6 months): 15 days written notice
+    (b) After probation: 60 days written notice
+
+2.4 Termination for Cause: The Company may terminate employment immediately without notice for:
+    (a) Gross misconduct or insubordination
+    (b) Material breach of this Agreement
+    (c) Conviction of any criminal offense
+    (d) Fraudulent conduct or dishonesty
+    (e) Violation of Company policies
+
+ARTICLE 3 - COMPENSATION AND BENEFITS
+
+3.1 Base Salary: The Employee shall receive an annual CTC of INR 24,00,000 (Indian Rupees Twenty-Four Lakhs Only), payable monthly, subject to applicable tax deductions.
+
+3.2 Breakdown:
+    - Basic Salary: INR 10,00,000 per annum
+    - HRA: INR 4,00,000 per annum
+    - Special Allowance: INR 6,00,000 per annum
+    - PF Contribution (Employer): INR 1,20,000 per annum
+    - Gratuity: INR 48,000 per annum
+    - Medical Insurance Premium: INR 32,000 per annum
+    - Flexible Benefits: INR 2,00,000 per annum
+
+3.3 Performance Bonus: Subject to performance review, the Employee may be eligible for an annual bonus of up to 15% of the annual CTC.
+
+3.4 Stock Options: The Employee shall be eligible for the Company's ESOP scheme after completing 1 year of service.
+
+ARTICLE 4 - LEAVE POLICY
+
+4.1 Annual Leave: 18 days paid leave per calendar year (prorated for partial years)
+4.2 Sick Leave: 12 days per calendar year (non-encashable)
+4.3 Public Holidays: As per the Company's holiday calendar
+4.4 Maternity/Paternity Leave: As per applicable law
+
+ARTICLE 5 - CONFIDENTIALITY
+
+5.1 Confidential Information: The Employee agrees to maintain the confidentiality of all proprietary information, trade secrets, business strategies, client lists, technical data, and any other confidential information belonging to the Company.
+
+5.2 Duration: This confidentiality obligation shall survive the termination of this Agreement for a period of 3 years.
+
+5.3 Return of Materials: Upon termination, the Employee shall return all Company property, documents, and materials.
+
+ARTICLE 6 - INTELLECTUAL PROPERTY
+
+6.1 Work Product: All inventions, discoveries, designs, software, documents, and other work product created by the Employee during employment shall be the exclusive property of the Company.
+
+6.2 Assignment: The Employee hereby assigns all rights, title, and interest in such work product to the Company.
+
+6.3 Moral Rights: To the extent permitted by law, the Employee waives any moral rights in the work product.
+
+ARTICLE 7 - NON-COMPETE AND NON-SOLICITATION
+
+7.1 Non-Compete: During employment and for 12 months thereafter, the Employee shall not engage in any business that directly competes with the Company within Maharashtra.
+
+7.2 Non-Solicitation: For 12 months after termination, the Employee shall not:
+    (a) Solicit any employees of the Company
+    (b) Solicit any clients or customers of the Company
+
+ARTICLE 8 - DISPUTE RESOLUTION
+
+8.1 Governing Law: This Agreement shall be governed by the laws of India.
+
+8.2 Arbitration: Any dispute arising out of this Agreement shall be resolved by arbitration in Pune under the Arbitration and Conciliation Act, 1996.
+
+8.3 Jurisdiction: The courts of Pune shall have exclusive jurisdiction.
+
+ARTICLE 9 - GENERAL PROVISIONS
+
+9.1 Entire Agreement: This Agreement constitutes the entire understanding between the parties.
+
+9.2 Amendment: This Agreement may only be amended in writing signed by both parties.
+
+9.3 Severability: If any provision is found invalid, the remaining provisions shall continue in effect.
+
+9.4 Waiver: Failure to enforce any provision shall not constitute a waiver.
+
+IN WITNESS WHEREOF, the parties have executed this Agreement as of the date first written above.
+
+FOR TECHVISION SOLUTIONS PRIVATE LIMITED:
+
+_________________________
+Authorized Signatory
+Name: Priya Patel
+Designation: HR Director
+Date: January 15, 2025
+
+EMPLOYEE:
+
+_________________________
+Rahul Sharma
+Date: January 15, 2025
+
+WITNESS 1:
+_________________________
+Name:
+Address:
+
+WITNESS 2:
+_________________________
+Name:
+Address:

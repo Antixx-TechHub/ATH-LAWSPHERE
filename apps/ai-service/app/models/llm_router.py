@@ -5,7 +5,11 @@ Multi-LLM Router for intelligent model selection.
 from enum import Enum
 from typing import Optional
 from langchain_openai import ChatOpenAI
-from langchain_anthropic import ChatAnthropic
+try:
+    from langchain_anthropic import ChatAnthropic
+    HAS_ANTHROPIC = True
+except ImportError:
+    HAS_ANTHROPIC = False
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.language_models import BaseChatModel
 
@@ -127,6 +131,11 @@ class LLMRouter:
             )
         
         elif config["provider"] == "anthropic":
+            if not HAS_ANTHROPIC:
+                raise ImportError(
+                    "Anthropic support not available. Install langchain-anthropic: "
+                    "pip install langchain-anthropic"
+                )
             return ChatAnthropic(
                 model=config["model_name"],
                 temperature=temperature,

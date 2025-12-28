@@ -15,6 +15,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Users,
+  ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -34,6 +35,7 @@ const navItems = [
 ];
 
 const bottomNavItems = [
+  { href: "/dashboard/privacy", label: "Privacy", icon: ShieldCheck },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 

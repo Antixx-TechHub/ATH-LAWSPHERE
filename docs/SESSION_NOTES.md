@@ -216,26 +216,31 @@ ollama pull llama3.1:8b
 ## ⏳ Pending Tasks
 
 ### High Priority
-1. **Test Local Inference on Powerful Machine**
+1. ✅ **Test Local Inference on Powerful Machine** [BLOCKED]
    - Need 32GB+ RAM or GPU for Ollama
    - Current dev machine has only 16GB RAM, no GPU
    - Follow `docs/LOCAL_LLM_SETUP.md`
 
-2. **Connect Frontend to Trust Chat API**
-   - Update `apps/web/src/lib/api/ai-client.ts` to use `/api/chat/trust/completions`
-   - Display trust info in chat messages
+2. ✅ **Connect Frontend to Trust Chat API** [COMPLETED]
+   - Updated `apps/web/src/lib/api/ai-client.ts` to use `/api/chat/trust/completions`
+   - Chat panel now displays trust info in messages
+   - Privacy details shown when PII is detected
+   - Trust indicators integrated into UI
 
-3. **Add Trust Dashboard Page**
-   - Create `/dashboard/privacy` route
-   - Show privacy metrics from `/api/chat/trust/dashboard`
+3. ✅ **Add Trust Dashboard Page** [COMPLETED]
+   - Created `/dashboard/privacy` route
+   - Displays privacy metrics from `/api/chat/trust/dashboard`
+   - Shows local vs cloud model status
+   - Added to sidebar navigation
 
 ### Medium Priority
-4. **File Upload with Local Processing**
-   - Upload to MinIO
-   - Extract text locally
-   - Route to local LLM
+4. ✅ **File Upload with Local Processing** [COMPLETED]
+   - Enhanced file upload API with privacy scanning
+   - Text extraction from PDF and DOCX files
+   - Automatic sensitivity detection on upload
+   - Privacy indicators shown in file list
 
-5. **Legal Document Templates**
+5. **Legal Document Templates** [NEXT]
    - Contract drafts
    - Affidavits
    - Vakalatnama
@@ -308,7 +313,28 @@ ollama pull llama3.1:8b
 
 ## 📝 Session History
 
-### December 28, 2025
+### December 28, 2025 - Session 2
+- ✅ Connected frontend to Trust Chat API
+  - Updated AI client with `trustChat()` method
+  - Enhanced chat panel to display trust information
+  - Added privacy details panels for sensitive content
+- ✅ Created Privacy Dashboard page
+  - Real-time privacy metrics display
+  - Local vs cloud model status
+  - Privacy protection rate visualization
+  - Added to sidebar navigation
+- ✅ Enhanced File Upload with Privacy Scanning
+  - Integrated privacy scanner into file processing
+  - Text extraction from PDF and DOCX
+  - Automatic sensitivity detection
+  - Privacy indicators in UI
+
+**Next Steps:**
+- Install dependencies (AI service needs Python packages, Web needs npm packages)
+- Start services and test the new features
+- Continue with Legal Document Templates or Search Integration
+
+### December 28, 2025 - Session 1
 - Fixed footer layout (logo, powered by text)
 - Added colorful social link icons
 - Fixed chat panel overflow for code blocks

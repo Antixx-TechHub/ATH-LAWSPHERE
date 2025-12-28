@@ -52,87 +52,54 @@ for arg in "$@"; do
     esac
 done
 
-# Check if Podman is available
-check_podman() {
-    if ! command -v podman &> /dev/null; then
-        log_error "Podman is not installed. Please install Podman first."
+# Check if Docker/Podman is available
+check_container_runtime() {
+    if command -v docker &> /dev/null; then
+        CONTAINER_CMD="docker"
+        log_info "Using Docker"
+    elif command -v podman &> /dev/null; then
+        CONTAINER_CMD="podman"
+        log_info "Using Podman"
+        if ! podman machine list 2>/dev/null | grep -q "Currently running"; then
+            log_warn "Podman machine is not running. Starting it..."
+            podman machine start
+        fi
+    else
+        log_error "Neither Docker nor Podman is installed. Please install one of them."
         exit 1
-    fi
-    
-    if ! podman machine list 2>/dev/null | grep -q "Currently running"; then
-        log_warn "Podman machine is not running. Starting it..."
-        podman machine start
     fi
 }
 
-# Start infrastructure services
+# Start infrastructure services using docker-compose
 start_infrastructure() {
-    log_info "Starting infrastructure services..."
+    log_info "Starting infrastructure services with docker-compose..."
     
-    NETWORK="lawsphere-network"
+    cd "$PROJECT_ROOT"
     
-    # Create network if not exists
-    podman network create $NETWORK 2>/dev/null || true
+    # Start PostgreSQL and Redis using docker-compose
+    docker-compose up -d postgres redis
     
-    # Start PostgreSQL
-    if ! podman ps --format "{{.Names}}" | grep -q "lawsphere-postgres"; then
-        if podman ps -a --format "{{.Names}}" | grep -q "lawsphere-postgres"; then
-            log_info "Starting existing PostgreSQL container..."
-            podman start lawsphere-postgres
-        else
-            log_info "Creating PostgreSQL container..."
-            podman run -d --name lawsphere-postgres \
-                --network $NETWORK \
-                -e POSTGRES_USER=lawsphere \
-                -e POSTGRES_PASSWORD=lawsphere_secret \
-                -e POSTGRES_DB=lawsphere \
-                -p 5432:5432 \
-                -v lawsphere-postgres-data:/var/lib/postgresql/data \
-                pgvector/pgvector:pg16
-        fi
+    log_success "Waiting for services to be healthy..."
+    sleep 5
+    
+    # Check if services are running
+    if docker ps | grep -q "lawsphere-postgres"; then
+        log_success "PostgreSQL is running"
     else
-        log_info "PostgreSQL is already running"
+        log_error "Failed to start PostgreSQL"
+        exit 1
     fi
     
-    # Start Redis
-    if ! podman ps --format "{{.Names}}" | grep -q "lawsphere-redis"; then
-        if podman ps -a --format "{{.Names}}" | grep -q "lawsphere-redis"; then
-            log_info "Starting existing Redis container..."
-            podman start lawsphere-redis
-        else
-            log_info "Creating Redis container..."
-            podman run -d --name lawsphere-redis \
-                --network $NETWORK \
-                -p 6379:6379 \
-                redis:7-alpine redis-server --requirepass redis_secret
-        fi
+    if docker ps | grep -q "lawsphere-redis"; then
+        log_success "Redis is running"
     else
-        log_info "Redis is already running"
-    fi
-    
-    # Start MinIO
-    if ! podman ps --format "{{.Names}}" | grep -q "lawsphere-minio"; then
-        if podman ps -a --format "{{.Names}}" | grep -q "lawsphere-minio"; then
-            log_info "Starting existing MinIO container..."
-            podman start lawsphere-minio
-        else
-            log_info "Creating MinIO container..."
-            podman run -d --name lawsphere-minio \
-                --network $NETWORK \
-                -e MINIO_ROOT_USER=lawsphere \
-                -e MINIO_ROOT_PASSWORD=lawsphere_secret \
-                -p 9000:9000 \
-                -p 9001:9001 \
-                -v lawsphere-minio-data:/data \
-                minio/minio:latest server /data --console-address ":9001"
-        fi
-    else
-        log_info "MinIO is already running"
+        log_error "Failed to start Redis"
+        exit 1
     fi
     
     log_success "Infrastructure services started!"
     echo ""
-    podman ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep lawsphere
+    docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep lawsphere || true
     echo ""
 }
 
@@ -206,7 +173,7 @@ main() {
     cd "$PROJECT_ROOT"
     
     if [ "$START_INFRA" = true ]; then
-        check_podman
+        check_container_runtime
         start_infrastructure
     fi
     

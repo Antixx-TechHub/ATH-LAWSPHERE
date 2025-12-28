@@ -219,3 +219,58 @@ apps/ai-service/
 ## �📄 License
 
 MIT License - see LICENSE file for details
+
+
+
+
+
+
+
+
+# Environment
+NODE_ENV=development
+
+# Database
+POSTGRES_USER=lawsphere
+POSTGRES_PASSWORD=lawsphere_secret
+POSTGRES_DB=lawsphere
+DATABASE_URL=postgresql://lawsphere:lawsphere_secret@localhost:5432/lawsphere
+
+# Redis
+REDIS_PASSWORD=redis_secret
+REDIS_URL=redis://:redis_secret@localhost:6379
+
+# Kafka
+KAFKA_BOOTSTRAP_SERVERS=localhost:9092
+
+# MinIO / S3
+MINIO_ROOT_USER=lawsphere
+MINIO_ROOT_PASSWORD=lawsphere_secret
+S3_ENDPOINT=http://localhost:9000
+S3_ACCESS_KEY=lawsphere
+S3_SECRET_KEY=lawsphere_secret
+S3_BUCKET=lawsphere-files
+
+# Authentication
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=dev-secret-key-change-in-production-1234567890
+
+# OAuth Providers (leave as placeholder for dev)
+GOOGLE_CLIENT_ID=placeholder
+GOOGLE_CLIENT_SECRET=placeholder
+GITHUB_CLIENT_ID=placeholder
+GITHUB_CLIENT_SECRET=placeholder
+
+# AI Services (add your actual keys)
+OPENAI_API_KEY=your-openai-api-key
+ANTHROPIC_API_KEY=your-anthropic-api-key
+GOOGLE_API_KEY=AIzaSyAUaZJDg8ZAqCnEKhS-3u3KO1sZli8oEv8
+
+# LangSmith (optional)
+LANGCHAIN_TRACING_V2=false
+LANGSMITH_API_KEY=placeholder
+LANGSMITH_PROJECT=lawsphere
+
+LANGCHAIN_TRACING_V2=true
+LANGCHAIN_API_KEY=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
+LANGCHAIN_PROJECT=lawsphere

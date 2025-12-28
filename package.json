@@ -1,0 +1,41 @@
+{
+  "name": "lawsphere",
+  "version": "1.0.0",
+  "description": "Next-generation legal-tech AI platform",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "dev:web": "npm run dev --workspace=@lawsphere/web",
+    "dev:ai": "cd apps/ai-service && python main.py",
+    "build": "turbo run build",
+    "start": "turbo run start",
+    "start:all": "bash scripts/start-all.sh",
+    "start:all:win": "scripts\\start-all.cmd",
+    "stop:all": "bash scripts/stop-all.sh",
+    "stop:all:win": "scripts\\stop-all.cmd",
+    "infra:start": "bash scripts/podman-services.sh start",
+    "infra:stop": "bash scripts/podman-services.sh stop",
+    "infra:status": "podman ps --format \"table {{.Names}}\\t{{.Status}}\\t{{.Ports}}\" | grep lawsphere || echo 'No services running'",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "db:generate": "npm run db:generate --workspace=@lawsphere/web",
+    "db:migrate": "npm run db:migrate --workspace=@lawsphere/web",
+    "db:studio": "npm run db:studio --workspace=@lawsphere/web",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "podman:up": "podman compose up -d",
+    "podman:down": "podman compose down"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.0",
+    "typescript": "^5.3.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "packageManager": "npm@10.0.0"
+}

@@ -1,0 +1,357 @@
+// Prisma Schema for Lawsphere
+// PostgreSQL with PGVector extension
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [pgvector(map: "vector")]
+}
+
+// ==================== USERS & AUTH ====================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  username      String?   @unique
+  name          String?
+  passwordHash  String?
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  accounts      Account[]
+  sessions      AuthSession[]
+  userRoles     UserRole[]
+  
+  // Chat & Collaboration
+  chatSessions        SessionParticipant[]
+  messages            Message[]
+  createdChatSessions ChatSession[]        @relation("SessionCreator")
+  
+  // Files & Notes
+  files     File[]
+  notes     Note[]
+  
+  // AI Interactions
+  aiInteractions AIInteraction[]
+  
+  // Notifications
+  notifications Notification[]
+
+  @@index([email])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model AuthSession {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ==================== RBAC ====================
+
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  
+  // Relations
+  permissions RolePermission[]
+  users       UserRole[]
+}
+
+model Permission {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  name        String
+  description String?
+  
+  // Relations
+  roles RolePermission[]
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+model UserRole {
+  userId    String
+  roleId    String
+  assignedAt DateTime @default(now())
+  expiresAt  DateTime?
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+}
+
+// ==================== CHAT SESSIONS ====================
+
+model ChatSession {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  isPrivate   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Creator
+  createdById String
+  createdBy   User   @relation("SessionCreator", fields: [createdById], references: [id])
+  
+  // Relations
+  participants SessionParticipant[]
+  messages     Message[]
+  files        File[]
+  notes        Note[]
+
+  @@index([createdById])
+}
+
+model SessionParticipant {
+  sessionId String
+  userId    String
+  joinedAt  DateTime @default(now())
+  role      String   @default("member") // owner, admin, member, viewer
+  isOnline  Boolean  @default(false)
+  lastSeen  DateTime @default(now())
+  
+  session ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([sessionId, userId])
+  @@index([userId])
+}
+
+// ==================== MESSAGES ====================
+
+model Message {
+  id        String   @id @default(cuid())
+  content   String   @db.Text
+  type      MessageType @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  sessionId String
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  
+  userId    String
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // AI Response metadata
+  aiModel       String?
+  tokenCount    Int?
+  responseTime  Int? // in milliseconds
+  
+  // File attachments
+  attachments MessageAttachment[]
+
+  @@index([sessionId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+enum MessageType {
+  USER
+  AI
+  SYSTEM
+}
+
+model MessageAttachment {
+  id        String @id @default(cuid())
+  messageId String
+  fileId    String
+  
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  file    File    @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
+  @@index([messageId])
+}
+
+// ==================== FILES ====================
+
+model File {
+  id          String   @id @default(cuid())
+  filename    String
+  originalName String
+  mimeType    String
+  size        Int
+  url         String
+  storageKey  String
+  status      FileStatus @default(UPLOADING)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  userId    String
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  sessionId String?
+  session   ChatSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  
+  // Metadata
+  metadata  Json?
+  
+  // OCR & Processing
+  extractedText String? @db.Text
+  ocrStatus     String?
+  
+  // Vector embedding for semantic search
+  embedding     Unsupported("vector(1536)")?
+  
+  // Relations
+  attachments MessageAttachment[]
+
+  @@index([userId])
+  @@index([sessionId])
+  @@index([status])
+}
+
+enum FileStatus {
+  UPLOADING
+  PROCESSING
+  READY
+  ERROR
+}
+
+// ==================== NOTES ====================
+
+model Note {
+  id        String   @id @default(cuid())
+  title     String
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  userId    String
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  sessionId String?
+  session   ChatSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  
+  // Version history
+  versions NoteVersion[]
+
+  @@index([userId])
+  @@index([sessionId])
+}
+
+model NoteVersion {
+  id        String   @id @default(cuid())
+  noteId    String
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+  
+  note Note @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  @@index([noteId])
+}
+
+// ==================== AI INTERACTIONS ====================
+
+model AIInteraction {
+  id           String   @id @default(cuid())
+  userId       String
+  model        String
+  prompt       String   @db.Text
+  response     String   @db.Text
+  inputTokens  Int
+  outputTokens Int
+  cost         Float?
+  latency      Int // in milliseconds
+  createdAt    DateTime @default(now())
+  
+  // Trace ID for LangSmith
+  traceId      String?
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([model])
+  @@index([createdAt])
+}
+
+// ==================== NOTIFICATIONS ====================
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  data      Json?
+  createdAt DateTime @default(now())
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([read])
+}
+
+// ==================== AUDIT LOGS ====================
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  metadata  Json?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([entity])
+  @@index([createdAt])
+}

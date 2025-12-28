@@ -1,0 +1,262 @@
+/**
+ * Files API Routes - Next.js API Route Handler
+ */
+
+import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { v4 as uuidv4 } from 'uuid';
+
+// S3 Client configuration
+const s3Client = new S3Client({
+  endpoint: process.env.S3_ENDPOINT || 'http://localhost:9000',
+  region: 'us-east-1',
+  credentials: {
+    accessKeyId: process.env.S3_ACCESS_KEY || 'lawsphere',
+    secretAccessKey: process.env.S3_SECRET_KEY || 'lawsphere_secret',
+  },
+  forcePathStyle: true, // Required for MinIO
+});
+
+const BUCKET_NAME = process.env.S3_BUCKET || 'lawsphere-files';
+const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+
+const ALLOWED_TYPES = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'text/plain',
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+];
+
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+
+export async function POST(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const formData = await request.formData();
+    const file = formData.get('file') as File | null;
+    const matterId = formData.get('matterId') as string | null;
+
+    if (!file) {
+      return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+    }
+
+    // Validate file type
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      return NextResponse.json(
+        { error: 'File type not allowed' },
+        { status: 400 }
+      );
+    }
+
+    // Validate file size
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        { error: 'File too large. Maximum size is 50MB' },
+        { status: 400 }
+      );
+    }
+
+    // Generate unique file key
+    const fileId = uuidv4();
+    const fileExtension = file.name.split('.').pop() || '';
+    const s3Key = `uploads/${session.user.id}/${fileId}.${fileExtension}`;
+
+    // Read file buffer
+    const buffer = Buffer.from(await file.arrayBuffer());
+
+    // Upload to S3
+    await s3Client.send(
+      new PutObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: s3Key,
+        Body: buffer,
+        ContentType: file.type,
+        Metadata: {
+          originalName: file.name,
+          uploadedBy: session.user.id,
+        },
+      })
+    );
+
+    // Create file record in database
+    const fileRecord = await prisma.file.create({
+      data: {
+        id: fileId,
+        userId: session.user.id,
+        matterId: matterId || undefined,
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        path: s3Key,
+        status: 'pending',
+      },
+    });
+
+    // Trigger AI service for processing
+    try {
+      await fetch(`${AI_SERVICE_URL}/api/files/process`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          file_id: fileId,
+          file_path: s3Key,
+          file_type: file.type,
+          user_id: session.user.id,
+        }),
+      });
+    } catch (err) {
+      console.error('Failed to trigger file processing:', err);
+    }
+
+    // Create audit log
+    await prisma.auditLog.create({
+      data: {
+        userId: session.user.id,
+        action: 'FILE_UPLOAD',
+        resource: 'File',
+        resourceId: fileId,
+        metadata: {
+          fileName: file.name,
+          fileType: file.type,
+          fileSize: file.size,
+        },
+      },
+    });
+
+    return NextResponse.json({
+      id: fileId,
+      name: file.name,
+      type: file.type,
+      size: file.size,
+      status: 'pending',
+    });
+  } catch (error) {
+    console.error('File upload error:', error);
+    return NextResponse.json(
+      { error: 'Failed to upload file' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const fileId = searchParams.get('id');
+    const matterId = searchParams.get('matterId');
+
+    if (fileId) {
+      // Get specific file
+      const file = await prisma.file.findUnique({
+        where: { id: fileId },
+      });
+
+      if (!file || file.userId !== session.user.id) {
+        return NextResponse.json({ error: 'File not found' }, { status: 404 });
+      }
+
+      // Generate signed URL for download
+      const command = new GetObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: file.path,
+      });
+      const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+
+      return NextResponse.json({
+        ...file,
+        downloadUrl: signedUrl,
+      });
+    }
+
+    // List files
+    const where: { userId: string; matterId?: string } = {
+      userId: session.user.id,
+    };
+
+    if (matterId) {
+      where.matterId = matterId;
+    }
+
+    const files = await prisma.file.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+
+    return NextResponse.json({ files });
+  } catch (error) {
+    console.error('Files GET error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const fileId = searchParams.get('id');
+
+    if (!fileId) {
+      return NextResponse.json({ error: 'File ID required' }, { status: 400 });
+    }
+
+    const file = await prisma.file.findUnique({
+      where: { id: fileId },
+    });
+
+    if (!file || file.userId !== session.user.id) {
+      return NextResponse.json({ error: 'File not found' }, { status: 404 });
+    }
+
+    // Delete from database (S3 cleanup can be done async)
+    await prisma.file.delete({
+      where: { id: fileId },
+    });
+
+    // Create audit log
+    await prisma.auditLog.create({
+      data: {
+        userId: session.user.id,
+        action: 'FILE_DELETE',
+        resource: 'File',
+        resourceId: fileId,
+        metadata: {
+          fileName: file.name,
+        },
+      },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('File delete error:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete file' },
+      { status: 500 }
+    );
+  }
+}

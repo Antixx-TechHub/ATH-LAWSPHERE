@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+// Force dynamic rendering - don't try to access DB at build time
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const health = {
     status: "ok",
@@ -8,6 +11,11 @@ export async function GET() {
     database: "unknown",
     roles: 0,
     users: 0,
+    env: {
+      NODE_ENV: process.env.NODE_ENV || "not set",
+      DATABASE_URL_SET: !!process.env.DATABASE_URL,
+      NEXTAUTH_URL: process.env.NEXTAUTH_URL || "not set",
+    }
   };
 
   try {

@@ -1,6 +1,9 @@
 "use client";
 
-import { useState } from "react";
+// Disable static generation to avoid SSG using useSearchParams without Suspense
+export const dynamic = 'force-dynamic';
+
+import { useState, Suspense } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -18,7 +21,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Scale, Mail, Lock, Chrome, Github } from "lucide-react";
 
-export default function LoginPage() {
+function LoginPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -177,5 +180,13 @@ export default function LoginPage() {
         </CardFooter>
       </Card>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageInner />
+    </Suspense>
   );
 }

@@ -16,6 +16,12 @@ const nextConfig = {
   images: {
     domains: ['localhost', 'avatars.githubusercontent.com', 'lh3.googleusercontent.com'],
   },
+  // Expose environment variables to the server runtime
+  env: {
+    DATABASE_URL: process.env.DATABASE_URL,
+    NEXTAUTH_URL: process.env.NEXTAUTH_URL,
+    NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET,
+  },
   webpack: (config) => {
     config.externals.push({
       'utf-8-validate': 'commonjs utf-8-validate',

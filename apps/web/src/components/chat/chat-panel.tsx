@@ -35,6 +35,7 @@ import { aiClient } from "@/lib/api/ai-client";
 
 // Attached document interface
 interface AttachedDocument {
+  id: string;
   name: string;
   content: string;
   size: number;
@@ -42,6 +43,7 @@ interface AttachedDocument {
 
 interface ChatPanelProps {
   sessionId: string;
+  onSessionUpdate?: () => void;
 }
 
 interface TrustInfo {
@@ -79,6 +81,7 @@ const AI_MODELS = [
   { id: "qwen2.5-14b", name: "Qwen 2.5 14B", provider: "Local", cost: "FREE", isLocal: true, available: true },
   { id: "llama3.1-8b", name: "Llama 3.1 8B", provider: "Local", cost: "FREE", isLocal: true, available: true },
   // Cloud Models - Fast and cheap
+  { id: "gpt-5-mini", name: "GPT-5 Mini", provider: "OpenAI", cost: "₹0.006/1K", isLocal: false, available: true },
   { id: "gemini-flash", name: "Gemini 2.0 Flash", provider: "Google", cost: "₹0.006/1K", isLocal: false, available: true },
   { id: "gpt-4o-mini", name: "GPT-4o Mini", provider: "OpenAI", cost: "₹0.01/1K", isLocal: false, available: true },
   { id: "gpt-4o", name: "GPT-4o", provider: "OpenAI", cost: "₹0.40/1K", isLocal: false, available: true },
@@ -94,15 +97,40 @@ const initialMessages: Message[] = [
   },
 ];
 
-export function ChatPanel({ sessionId }: ChatPanelProps) {
+export function ChatPanel({ sessionId, onSessionUpdate }: ChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [input, setInput] = useState("");
   const [selectedModel, setSelectedModel] = useState("auto");
   const [isLoading, setIsLoading] = useState(false);
   const [sessionCost, setSessionCost] = useState({ totalInr: 0, savedInr: 0, queries: 0 });
-  const [attachedDoc, setAttachedDoc] = useState<AttachedDocument | null>(null);
+  const [attachedDocs, setAttachedDocs] = useState<AttachedDocument[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Load persisted context when session changes
+  useEffect(() => {
+    const loadContext = async () => {
+      if (!sessionId) return;
+      try {
+        const ctx = await aiClient.getSessionContext(sessionId);
+        const restored: Message[] = (ctx.messages || []).map((m: any) => ({
+          id: String(m.id),
+          type: m.role === "assistant" ? "ai" : (m.role as "user" | "system" | "ai"),
+          content: m.content,
+          timestamp: m.created_at ? new Date(m.created_at) : new Date(),
+          model: m.metadata?.model,
+        }));
+        setMessages(restored.length ? restored : initialMessages);
+      } catch (err) {
+        console.error("Failed to load session context", err);
+        setMessages(initialMessages);
+      }
+    };
+    loadContext();
+    // reset state for new session
+    setSessionCost({ totalInr: 0, savedInr: 0, queries: 0 });
+    setAttachedDocs([]);
+  }, [sessionId]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -110,8 +138,8 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
 
   // Handle file attachment
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
     // Supported text-based formats
     const supportedTypes = [
@@ -119,43 +147,62 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
       'text/markdown',
       'application/json',
     ];
-    
-    // Check if it's a text-based file or small enough to read
-    const isTextFile = supportedTypes.includes(file.type) || 
-                       file.name.endsWith('.txt') || 
-                       file.name.endsWith('.md') ||
-                       file.name.endsWith('.json');
-
-    if (!isTextFile && file.size > 100000) {
-      alert('Please use .txt, .md, or .json files for attachment. For PDFs and DOCx, use the Files page.');
-      return;
-    }
 
     try {
-      const content = await file.text();
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        
+        // Check if it's a text-based file or small enough to read
+        const isTextFile = supportedTypes.includes(file.type) || 
+                           file.name.endsWith('.txt') || 
+                           file.name.endsWith('.md') ||
+                           file.name.endsWith('.json');
+
+        if (!isTextFile && file.size > 100000) {
+          alert(`File "${file.name}" is too large. Please use .txt, .md, or .json files for attachment. For PDFs and DOCx, use the Files page.`);
+          continue;
+        }
+
+        const content = await file.text();
+        
+        // Limit content size for context window
+        const maxChars = 50000;
+        const truncatedContent = content.length > maxChars 
+          ? content.substring(0, maxChars) + '\n\n[... Content truncated for size ...]'
+          : content;
+
+        const docId = `doc-${Date.now()}-${i}`;
+        
+        setAttachedDocs(prev => [...prev, {
+          id: docId,
+          name: file.name,
+          content: truncatedContent,
+          size: file.size,
+        }]);
+
+        // Also upload the file to the session so it appears in the Files tab
+        try {
+          if (sessionId) {
+            await aiClient.uploadFile(file, sessionId);
+          }
+        } catch (uploadErr) {
+          console.error('Upload failed for', file.name, uploadErr);
+        }
+
+        // Add system message about attachment
+        const attachmentMsg: Message = {
+          id: Date.now().toString() + `-${i}`,
+          type: 'system',
+          content: `📎 Document attached: **${file.name}** (${(file.size / 1024).toFixed(1)} KB). You can now ask questions about this document.`,
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, attachmentMsg]);
+      }
       
-      // Limit content size for context window
-      const maxChars = 50000;
-      const truncatedContent = content.length > maxChars 
-        ? content.substring(0, maxChars) + '\n\n[... Content truncated for size ...]'
-        : content;
-
-      setAttachedDoc({
-        name: file.name,
-        content: truncatedContent,
-        size: file.size,
-      });
-
-      // Add system message about attachment
-      const attachmentMsg: Message = {
-        id: Date.now().toString(),
-        type: 'system',
-        content: `📎 Document attached: **${file.name}** (${(file.size / 1024).toFixed(1)} KB). You can now ask questions about this document.`,
-        timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, attachmentMsg]);
+      // Notify parent to update session info
+      onSessionUpdate?.();
     } catch (error) {
-      alert('Could not read file. Please try a different file.');
+      alert('Could not read one or more files. Please try different files.');
     }
 
     // Reset input
@@ -164,8 +211,24 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
     }
   }, []);
 
-  const handleRemoveAttachment = () => {
-    setAttachedDoc(null);
+  const handleRemoveAttachment = (docId: string) => {
+    const doc = attachedDocs.find(d => d.id === docId);
+    setAttachedDocs(prev => prev.filter(d => d.id !== docId));
+    
+    if (doc) {
+      const removeMsg: Message = {
+        id: Date.now().toString(),
+        type: 'system',
+        content: `📎 Document "${doc.name}" removed from context.`,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, removeMsg]);
+      onSessionUpdate?.();
+    }
+  };
+
+  const handleRemoveAllAttachments = () => {
+    setAttachedDocs([]);
     const removeMsg: Message = {
       id: Date.now().toString(),
       type: 'system',
@@ -200,12 +263,16 @@ export function ChatPanel({ sessionId }: ChatPanelProps) {
     try {
       // Build message content - include document context if attached
       let userContent = input;
-      if (attachedDoc) {
-        userContent = `[ATTACHED DOCUMENT: ${attachedDoc.name}]
+      if (attachedDocs.length > 0) {
+        const docsContent = attachedDocs
+          .map(doc => `[ATTACHED DOCUMENT: ${doc.name}]
 
 --- DOCUMENT CONTENT START ---
-${attachedDoc.content}
---- DOCUMENT CONTENT END ---
+${doc.content}
+--- DOCUMENT CONTENT END ---`)
+          .join('\n\n');
+        
+        userContent = `${docsContent}
 
 USER QUESTION: ${input}`;
       }
@@ -245,7 +312,7 @@ USER QUESTION: ${input}`;
         model: selectedModel,
         temperature: 0.7,
         session_id: sessionId,
-        document_attached: !!attachedDoc,
+        document_attached: attachedDocs.length > 0,
       });
 
       // Debug - log the full response
@@ -577,22 +644,37 @@ USER QUESTION: ${input}`;
         onSubmit={handleSubmit}
         className="p-3 border-t border-neutral-200 dark:border-neutral-800"
       >
-        {/* Attached Document Indicator */}
-        {attachedDoc && (
-          <div className="mb-2 flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
-            <FileText className="h-4 w-4 text-blue-600" />
-            <span className="text-sm text-blue-700 dark:text-blue-400 flex-1 truncate">
-              {attachedDoc.name} ({(attachedDoc.size / 1024).toFixed(1)} KB)
-            </span>
-            <Button 
-              type="button" 
-              variant="ghost" 
-              size="icon" 
-              className="h-6 w-6 text-blue-600 hover:text-red-600"
-              onClick={handleRemoveAttachment}
-            >
-              <X className="h-3 w-3" />
-            </Button>
+        {/* Attached Documents Indicator */}
+        {attachedDocs.length > 0 && (
+          <div className="mb-2 space-y-1.5 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
+            {attachedDocs.map((doc) => (
+              <div key={doc.id} className="flex items-center gap-2">
+                <FileText className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                <span className="text-sm text-blue-700 dark:text-blue-400 flex-1 truncate">
+                  {doc.name} ({(doc.size / 1024).toFixed(1)} KB)
+                </span>
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-6 w-6 text-blue-600 hover:text-red-600"
+                  onClick={() => handleRemoveAttachment(doc.id)}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            ))}
+            {attachedDocs.length > 1 && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="w-full mt-1 text-xs"
+                onClick={handleRemoveAllAttachments}
+              >
+                Remove all
+              </Button>
+            )}
           </div>
         )}
 
@@ -603,15 +685,16 @@ USER QUESTION: ${input}`;
             type="file"
             accept=".txt,.md,.json,text/plain,text/markdown,application/json"
             onChange={handleFileSelect}
+            multiple
             className="hidden"
           />
           <Button 
             type="button" 
             variant="ghost" 
             size="icon" 
-            className={cn("h-8 w-8", attachedDoc && "text-blue-600")}
+            className={cn("h-8 w-8", attachedDocs.length > 0 && "text-blue-600")}
             onClick={() => fileInputRef.current?.click()}
-            title="Attach document (.txt, .md, .json)"
+            title={`Attach documents (.txt, .md, .json) - ${attachedDocs.length} attached`}
           >
             <Paperclip className="h-4 w-4" />
           </Button>
@@ -619,7 +702,7 @@ USER QUESTION: ${input}`;
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={attachedDoc ? "Ask about the attached document..." : "Ask a legal question..."}
+            placeholder={attachedDocs.length > 0 ? "Ask about the attached document..." : "Ask a legal question..."}
             className="min-h-[36px] max-h-24 resize-none text-sm"
             rows={1}
           />
@@ -628,8 +711,8 @@ USER QUESTION: ${input}`;
           </Button>
         </div>
         <p className="text-[10px] text-neutral-500 mt-1.5 text-center">
-          {attachedDoc 
-            ? "📎 Document attached • Press Enter to send" 
+          {attachedDocs.length > 0
+            ? `📎 ${attachedDocs.length} Document${attachedDocs.length > 1 ? 's' : ''} attached • Press Enter to send` 
             : "Press Enter to send, Shift + Enter for new line • Click 📎 to attach .txt files"}
         </p>
       </form>

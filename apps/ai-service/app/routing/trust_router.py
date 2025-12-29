@@ -165,6 +165,17 @@ class TrustRouter:
             capabilities=["complex_analysis", "drafting"],
             priority=3
         ),
+        "gpt-5-mini": ModelConfig(
+            model_id="gpt-5-mini",
+            display_name="GPT-5 Mini",
+            provider=ModelProvider.CLOUD,
+            api_key_env="OPENAI_API_KEY",
+            cost_per_1k_tokens=0.00010,  # Very economical
+            latency_ms_avg=800,
+            context_window=128000,
+            capabilities=["general", "analysis", "legal"],
+            priority=1  # Highest priority for cost optimization
+        ),
         "claude-3-sonnet": ModelConfig(
             model_id="claude-3-sonnet-20240229",
             display_name="Claude 3 Sonnet",

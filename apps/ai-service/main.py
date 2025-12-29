@@ -25,9 +25,10 @@ import structlog
 
 from app.config import settings
 from app.api import chat, files, search, health
-from app.api import trust_chat
+from app.api import trust_chat, sessions
 from app.middleware.logging import LoggingMiddleware
 from app.middleware.rate_limit import RateLimitMiddleware
+from app.db import init_db
 
 # Configure structured logging
 structlog.configure(
@@ -53,7 +54,7 @@ async def lifespan(app: FastAPI):
     logger.info("Starting Lawsphere AI Service", env=settings.APP_ENV)
     
     # Initialize connections, load models, etc.
-    # await init_database()
+    await init_db()
     # await init_redis()
     # await init_embeddings()
     
@@ -95,6 +96,7 @@ app.mount("/metrics", metrics_app)
 app.include_router(health.router, tags=["Health"])
 app.include_router(chat.router, prefix="/api/chat", tags=["Chat"])
 app.include_router(trust_chat.router, prefix="/api/chat", tags=["Trust Chat"])
+app.include_router(sessions.router, prefix="/api/sessions", tags=["Sessions"])
 app.include_router(files.router, prefix="/api/files", tags=["Files"])
 app.include_router(search.router, prefix="/api/search", tags=["Search"])
 

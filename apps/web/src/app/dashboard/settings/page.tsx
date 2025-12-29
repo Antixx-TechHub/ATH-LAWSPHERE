@@ -86,7 +86,8 @@ export default function SettingsPage() {
                 id="default-model"
                 className="w-full px-3 py-2 border rounded-md bg-background"
               >
-                <option value="gpt-4o">GPT-4o (Recommended)</option>
+                <option value="gpt-5-mini">GPT-5 Mini (Recommended - Best Value)</option>
+                <option value="gpt-4o">GPT-4o (Premium)</option>
                 <option value="gpt-4">GPT-4</option>
                 <option value="claude-3-sonnet">Claude 3 Sonnet</option>
                 <option value="claude-3-opus">Claude 3 Opus</option>

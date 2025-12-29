@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,6 +33,8 @@ import { aiClient } from "@/lib/api/ai-client";
 
 interface FilesPanelProps {
   sessionId: string;
+  onFilesChanged?: () => void;
+  refreshSignal?: number;
 }
 
 interface UploadedFile {
@@ -47,44 +49,36 @@ interface UploadedFile {
   piiDetected?: boolean;
 }
 
-const mockFiles: UploadedFile[] = [
-  {
-    id: "1",
-    name: "contract_agreement.pdf",
-    size: 2456789,
-    type: "application/pdf",
-    status: "ready",
-    uploadedAt: new Date(Date.now() - 3600000),
-  },
-  {
-    id: "2",
-    name: "evidence_photo.jpg",
-    size: 1234567,
-    type: "image/jpeg",
-    status: "ready",
-    uploadedAt: new Date(Date.now() - 7200000),
-  },
-  {
-    id: "3",
-    name: "witness_statement.docx",
-    size: 345678,
-    type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    status: "processing",
-    uploadedAt: new Date(Date.now() - 600000),
-  },
-  {
-    id: "4",
-    name: "deposition_recording.mp3",
-    size: 15678901,
-    type: "audio/mpeg",
-    status: "ready",
-    uploadedAt: new Date(Date.now() - 86400000),
-  },
-];
-
-export function FilesPanel({ sessionId }: FilesPanelProps) {
-  const [files, setFiles] = useState<UploadedFile[]>(mockFiles);
+export function FilesPanel({ sessionId, onFilesChanged, refreshSignal }: FilesPanelProps) {
+  const [files, setFiles] = useState<UploadedFile[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const refreshFiles = useCallback(async () => {
+    if (!sessionId) return;
+    const res = await aiClient.listSessionFiles(sessionId);
+    const mapped: UploadedFile[] = (res.files || []).map((f: any) => ({
+      id: f.id,
+      name: f.name,
+      size: f.size || 0,
+      type: f.mime_type || "application/octet-stream",
+      status: (f.status as UploadedFile["status"]) || "ready",
+      uploadedAt: f.uploaded_at ? new Date(f.uploaded_at) : new Date(),
+      isSensitive: f.is_sensitive,
+      piiDetected: f.pii_detected,
+    }));
+    setFiles(mapped);
+  }, [sessionId]);
+
+  useEffect(() => {
+    refreshFiles().catch((err) => console.error("Failed to load files", err));
+  }, [refreshFiles]);
+
+  // Refresh whenever the parent signals a change (e.g., chat attachments uploaded)
+  useEffect(() => {
+    if (refreshSignal !== undefined) {
+      refreshFiles().catch((err) => console.error("Failed to refresh files", err));
+    }
+  }, [refreshSignal, refreshFiles]);
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     for (const file of acceptedFiles) {
@@ -105,7 +99,7 @@ export function FilesPanel({ sessionId }: FilesPanelProps) {
 
       try {
         // Upload file to API
-        const result = await aiClient.uploadFile(file);
+        const result = await aiClient.uploadFile(file, sessionId);
         
         // Update file status
         setFiles((prev) =>
@@ -121,23 +115,11 @@ export function FilesPanel({ sessionId }: FilesPanelProps) {
           )
         );
 
-        // Poll for processing status (simplified - you may want to use websockets)
-        setTimeout(() => {
-          setFiles((prev) =>
-            prev.map((f) =>
-              f.id === result.file_id
-                ? { 
-                    ...f, 
-                    status: "ready",
-                    // These would come from the API in a real implementation
-                    isSensitive: file.name.toLowerCase().includes('confidential') || 
-                                 file.name.toLowerCase().includes('contract'),
-                    piiDetected: file.name.toLowerCase().includes('personal'),
-                  }
-                : f
-            )
-          );
-        }, 2000);
+        // Refresh from API after upload completes
+        await refreshFiles();
+        
+        // Notify parent component
+        onFilesChanged?.();
 
       } catch (error) {
         console.error('File upload error:', error);
@@ -284,7 +266,21 @@ export function FilesPanel({ sessionId }: FilesPanelProps) {
                         <Download className="h-4 w-4 mr-2" />
                         Download
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="text-red-600">
+                      <DropdownMenuItem
+                        className="text-red-600"
+                        onClick={async () => {
+                          try {
+                            await aiClient.deleteFile(file.id);
+                            // Optimistically remove from UI
+                            setFiles((prev) => prev.filter((f) => f.id !== file.id));
+                            // Refresh from API and notify parent
+                            await refreshFiles();
+                            onFilesChanged?.();
+                          } catch (err) {
+                            console.error('Delete failed', err);
+                          }
+                        }}
+                      >
                         <Trash2 className="h-4 w-4 mr-2" />
                         Delete
                       </DropdownMenuItem>

@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { ChatPanel } from "@/components/chat/chat-panel";
 import { FilesPanel } from "@/components/chat/files-panel";
 import { NotesPanel } from "@/components/chat/notes-panel";
+import { SessionInfoPanel } from "@/components/chat/session-info-panel";
 import { Button } from "@/components/ui/button";
 import {
   MessageSquare,
@@ -14,16 +16,117 @@ import {
   PanelRightOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { aiClient } from "@/lib/api/ai-client";
 
 type ActivePanel = "chat" | "files" | "notes";
 
 export default function ChatPage() {
+  const searchParams = useSearchParams();
+  const sessionParam = searchParams.get("session");
+  
   const [activePanel, setActivePanel] = useState<ActivePanel>("chat");
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
-  const [sessionId] = useState("new");
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [sessionFiles, setSessionFiles] = useState<any[]>([]);
+  const [chatFiles, setChatFiles] = useState<any[]>([]);
+  const [refreshSignal, setRefreshSignal] = useState(0);
+
+  const loadSessionData = async (id: string) => {
+    try {
+      // Load uploaded files
+      const res = await aiClient.listSessionFiles(id);
+      setSessionFiles(res.files || []);
+      // Increment refresh signal so FilesPanel can react
+      setRefreshSignal((prev) => prev + 1);
+      
+      // Load chat context to get messages with file references
+      const context = await aiClient.getSessionContext(id);
+      if (context.messages) {
+        // Extract files from system messages that indicate attachments
+        // These messages look like: "📎 Document attached: **filename.txt** (size KB)"
+        const filesFromChat = context.messages
+          .filter((msg: any) => 
+            msg.type === "system" && 
+            msg.content?.includes("Document attached:") &&
+            !msg.content?.includes("Document removed")
+          )
+          .map((msg: any) => {
+            // Parse the system message: "📎 Document attached: **filename.txt** (123.5 KB)"
+            const match = msg.content?.match(/Document attached: \*\*(.+?)\*\* \((.+?) KB\)/);
+            if (match) {
+              const filename = match[1];
+              const sizeStr = match[2];
+              const sizeKB = parseFloat(sizeStr);
+              return {
+                id: msg.id,
+                name: filename,
+                size: sizeKB * 1024, // Convert back to bytes
+                mime_type: filename.endsWith(".md") ? "text/markdown" : 
+                          filename.endsWith(".json") ? "application/json" : 
+                          "text/plain",
+                status: "ready",
+                uploaded_at: msg.timestamp,
+                from_chat: true,
+              };
+            }
+            return null;
+          })
+          .filter((file: any) => file !== null);
+        setChatFiles(filesFromChat);
+      }
+    } catch (err) {
+      console.error("Failed to load session data", err);
+    }
+  };
+
+  useEffect(() => {
+    const init = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Use session from URL if provided, otherwise create new
+        if (sessionParam) {
+          setSessionId(sessionParam);
+          // Fetch session files and chat data
+          await loadSessionData(sessionParam);
+        } else {
+          const created = await aiClient.createSession("New Session");
+          setSessionId(created.id);
+        }
+      } catch (err) {
+        console.error("Unable to initialize session", err);
+        setError("Failed to connect to AI service. Please ensure the service is running on port 8000.");
+        setSessionId("local-" + Date.now());
+      } finally {
+        setLoading(false);
+      }
+    };
+    init();
+  }, [sessionParam]);
+
+  if (loading) {
+    return (
+      <div className="h-[calc(100vh-8rem)] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+          <p className="text-neutral-500">Loading session...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-[calc(100vh-8rem)]">
+      {/* Error Banner */}
+      {error && (
+        <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+        </div>
+      )}
+
       {/* Panel Toggle Tabs */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex gap-2">
@@ -81,40 +184,18 @@ export default function ChatPage() {
             rightPanelOpen ? "w-2/3" : "w-full"
           )}
         >
-          <ChatPanel sessionId={sessionId} />
+          {sessionId && <ChatPanel sessionId={sessionId} onSessionUpdate={() => loadSessionData(sessionId)} />}
         </div>
 
         {/* Right Panel - Files/Notes */}
         {rightPanelOpen && (
           <div className="w-1/3 min-w-[300px]">
             {activePanel === "files" ? (
-              <FilesPanel sessionId={sessionId} />
+              sessionId && <FilesPanel sessionId={sessionId} onFilesChanged={() => loadSessionData(sessionId)} refreshSignal={refreshSignal} />
             ) : activePanel === "notes" ? (
-              <NotesPanel sessionId={sessionId} />
+              sessionId && <NotesPanel sessionId={sessionId} />
             ) : (
-              <div className="h-full bg-white dark:bg-neutral-900 rounded-lg border border-neutral-200 dark:border-neutral-800 p-4">
-                <div className="flex flex-col h-full">
-                  <h3 className="font-semibold mb-4">Session Info</h3>
-                  <div className="flex-1 space-y-4">
-                    <div className="p-3 rounded-lg bg-neutral-50 dark:bg-neutral-800">
-                      <p className="text-sm font-medium">Participants</p>
-                      <p className="text-sm text-neutral-500">3 users online</p>
-                    </div>
-                    <div className="p-3 rounded-lg bg-neutral-50 dark:bg-neutral-800">
-                      <p className="text-sm font-medium">Files</p>
-                      <p className="text-sm text-neutral-500">
-                        12 files uploaded
-                      </p>
-                    </div>
-                    <div className="p-3 rounded-lg bg-neutral-50 dark:bg-neutral-800">
-                      <p className="text-sm font-medium">Notes</p>
-                      <p className="text-sm text-neutral-500">
-                        5 collaborative notes
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              sessionId && <SessionInfoPanel sessionId={sessionId} files={sessionFiles} chatFiles={chatFiles} />
             )}
           </div>
         )}

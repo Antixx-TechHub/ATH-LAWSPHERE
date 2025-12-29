@@ -3,7 +3,7 @@ File processing API endpoints.
 """
 
 from typing import Optional, List
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form, BackgroundTasks
+from fastapi import APIRouter, HTTPException, UploadFile, File, Form, BackgroundTasks, Depends
 from pydantic import BaseModel
 from enum import Enum
 import uuid
@@ -26,6 +26,9 @@ except ImportError:
 
 from app.routing.privacy_scanner import PrivacyScanner
 from app.routing.audit_logger import AuditLogger
+from app.db import get_db
+from app.services import session_store
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter()
 privacy_scanner = PrivacyScanner()
@@ -68,6 +71,7 @@ async def upload_file(
     session_id: Optional[str] = Form(None),
     user_id: Optional[str] = Form(None),
     background_tasks: BackgroundTasks = BackgroundTasks(),
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Upload a file for processing.
@@ -99,9 +103,18 @@ async def upload_file(
     # Read file content
     content = await file.read()
     
-    # TODO: Upload to S3
-    # TODO: Store metadata in database
-    # TODO: Queue for processing
+    # Persist file metadata tied to the session
+    session_id = await session_store.ensure_session(db, session_id, user_id)
+    await session_store.add_file(
+        db,
+        session_id=session_id,
+        name=file.filename or "uploaded_file",
+        mime_type=file.content_type,
+        size=len(content),
+        status=FileStatus.PROCESSING.value,
+        file_id=file_id,
+    )
+    await db.commit()
     
     # Add background processing task
     background_tasks.add_task(process_file, file_id, content, file.content_type)
@@ -219,7 +232,10 @@ async def generate_embeddings(file_id: str):
 
 
 @router.delete("/{file_id}")
-async def delete_file(file_id: str):
+async def delete_file(file_id: str, db: AsyncSession = Depends(get_db)):
     """Delete a file and its associated data."""
-    # TODO: Implement file deletion
+    deleted = await session_store.delete_file(db, file_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="File not found")
+    await db.commit()
     return {"status": "deleted", "file_id": file_id}

@@ -5,7 +5,7 @@ Now with LangGraph agentic capabilities for tool calling.
 """
 
 from typing import Optional, List, AsyncGenerator
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from enum import Enum
@@ -20,6 +20,9 @@ from app.models.llm_router import LLMRouter, ModelType
 from app.models.ollama_client import get_ollama_client, get_ollama_model_name
 from app.routing import TrustRouter, AuditLogger, RoutingDecision
 from app.config import settings
+from app.db import get_db
+from app.services import session_store
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = structlog.get_logger()
 
@@ -184,6 +187,7 @@ class TrustChatRequest(BaseModel):
 class TrustChatResponse(BaseModel):
     """Chat response with full trust transparency"""
     id: str = ""
+    session_id: str = ""
     message: Message
     model: str = ""
     
@@ -197,7 +201,7 @@ class TrustChatResponse(BaseModel):
 
 
 @router.post("/trust/completions", response_model=TrustChatResponse)
-async def create_trust_chat_completion(request: TrustChatRequest):
+async def create_trust_chat_completion(request: TrustChatRequest, db: AsyncSession = Depends(get_db)):
     """
     Create a privacy-first chat completion with full transparency.
     
@@ -499,8 +503,10 @@ Maintain attorney-client privilege and confidentiality."""
         print(f"[TRUST_CHAT] Response content length: {len(response_content)}")
         print(f"[TRUST_CHAT] Response content preview: {response_content[:200] if response_content else 'EMPTY'}")
         
+        session_id = await session_store.ensure_session(db, request.session_id, request.user_id)
         response_obj = TrustChatResponse(
             id=str(uuid.uuid4()),
+            session_id=session_id,
             message=Message(
                 role=MessageRole.ASSISTANT,
                 content=response_content,
@@ -511,6 +517,24 @@ Maintain attorney-client privilege and confidentiality."""
             latency_ms=latency_ms,
             routing_time_ms=routing_result.routing_time_ms
         )
+
+        # Persist last user + assistant messages for resume
+        if request.messages:
+            last_user = request.messages[-1]
+            await session_store.append_message(
+                db,
+                session_id=session_id,
+                role=last_user.role.value,
+                content=last_user.content,
+            )
+        await session_store.append_message(
+            db,
+            session_id=session_id,
+            role=MessageRole.ASSISTANT.value,
+            content=response_content,
+            metadata={"model": model_id, "trust": response_obj.trust.model_dump()},
+        )
+        await db.commit()
         
         # DEBUG: Log full response object
         print(f"[TRUST_CHAT] Response object message.content: {response_obj.message.content[:200] if response_obj.message.content else 'EMPTY'}")

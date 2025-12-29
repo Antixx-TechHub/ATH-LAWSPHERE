@@ -22,6 +22,7 @@ sqlalchemy>=2.0.25
 pgvector>=0.2.4
 redis>=5.0.0
 aiokafka>=0.10.0
+aiosqlite>=0.19.0
 
 # AI (API-based only - no local models)
 openai>=1.10.0

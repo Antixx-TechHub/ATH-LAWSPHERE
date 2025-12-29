@@ -13,6 +13,9 @@ import asyncio
 from app.agents.legal_assistant import LegalAssistantAgent
 from app.models.llm_router import LLMRouter, ModelType
 from app.config import settings
+from app.db import get_db
+from app.services import session_store
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter()
 
@@ -42,6 +45,7 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     """Chat completion response."""
     id: str
+    session_id: str
     model: str
     message: Message
     usage: dict
@@ -55,7 +59,7 @@ class TokenUsage(BaseModel):
 
 
 @router.post("/completions", response_model=ChatResponse)
-async def create_chat_completion(request: ChatRequest):
+async def create_chat_completion(request: ChatRequest, db: AsyncSession = Depends(get_db)):
     """
     Create a chat completion using the selected AI model.
     Supports GPT-4, Claude, Gemini, and other models.
@@ -81,12 +85,33 @@ async def create_chat_completion(request: ChatRequest):
             messages=[{"role": m.role.value, "content": m.content} for m in request.messages],
             session_id=request.session_id,
         )
+
+        # Persist session and messages
+        session_id = await session_store.ensure_session(db, response.get("session_id"), request.user_id)
+        # Persist latest user message only to avoid duplication
+        if request.messages:
+            last_user = request.messages[-1]
+            await session_store.append_message(
+                db,
+                session_id=session_id,
+                role=last_user.role.value,
+                content=last_user.content,
+            )
+        await session_store.append_message(
+            db,
+            session_id=session_id,
+            role=MessageRole.ASSISTANT.value,
+            content=response.get("content", ""),
+            metadata={"model": model_type.value},
+        )
+        await db.commit()
         
         latency_ms = int((time.time() - start_time) * 1000)
         
         return ChatResponse(
             id=response.get("id", "chat-" + str(int(time.time()))),
-            model=request.model.value,
+            session_id=session_id,
+            model=model_type.value,
             message=Message(
                 role=MessageRole.ASSISTANT,
                 content=response.get("content", ""),
@@ -159,6 +184,15 @@ async def list_models():
                 "cost_per_1k_input": 0.005,
                 "cost_per_1k_output": 0.015,
                 "capabilities": ["chat", "analysis", "coding", "vision"],
+            },
+            {
+                "id": "gpt-5-mini",
+                "name": "GPT-5 Mini",
+                "provider": "openai",
+                "context_window": 128000,
+                "cost_per_1k_input": 0.0001,
+                "cost_per_1k_output": 0.0004,
+                "capabilities": ["chat", "analysis", "legal", "general"],
             },
             {
                 "id": "claude-3-opus",

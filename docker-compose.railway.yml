@@ -1,0 +1,204 @@
+# Railway.app Deployment Configuration
+# Use: railway up -e docker-compose.railway.yml
+# This config includes Ollama for local LLM hosting on Railway
+
+version: '3.8'
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: lawsphere-postgres-railway
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-lawsphere}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-lawsphere}
+    volumes:
+      - postgres_railway_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lawsphere"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - lawsphere-railway
+
+  redis:
+    image: redis:7-alpine
+    container_name: lawsphere-redis-railway
+    restart: always
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_railway_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - lawsphere-railway
+
+  # Ollama for local LLM hosting
+  # This allows Railway to host your own LLM models
+  # Significantly reduces API costs and latency
+  ollama:
+    image: ollama/ollama:latest
+    container_name: lawsphere-ollama-railway
+    restart: always
+    environment:
+      # Configure Ollama to run efficiently on Railway
+      OLLAMA_HOST: 0.0.0.0:11434
+      # Optional: Set memory limits if needed
+      # OLLAMA_NUM_GPU: 0 (use CPU only on Railway)
+    volumes:
+      # Persistent storage for downloaded models
+      - ollama_railway_data:/root/.ollama
+    ports:
+      - "11434:11434"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - lawsphere-railway
+    # Note: Models are pulled on first startup
+    # Add initialization script via init-ollama.sh for auto-pull
+
+  ai-service:
+    image: ghcr.io/${GITHUB_OWNER}/lawsphere-ai:${IMAGE_TAG:-latest}
+    container_name: lawsphere-ai-railway
+    restart: always
+    environment:
+      # Database & Cache
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      
+      # Environment
+      NODE_ENV: ${NODE_ENV:-production}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      
+      # Cloud API Keys (fallback if Ollama unavailable)
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      LANGSMITH_API_KEY: ${LANGSMITH_API_KEY}
+      LANGCHAIN_TRACING_V2: ${LANGCHAIN_TRACING_V2:-false}
+      
+      # ============ Local LLM Configuration ============
+      # Set OLLAMA_ENABLED=true to use Ollama instead of cloud APIs
+      OLLAMA_ENABLED: ${OLLAMA_ENABLED:-true}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
+      
+      # Model options: qwen2, llama2, mistral, neural-chat, etc.
+      # Qwen2 7B recommended - fast, accurate, low latency
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2}
+      
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - lawsphere-railway
+
+  web:
+    image: ghcr.io/${GITHUB_OWNER}/lawsphere-web:${IMAGE_TAG:-latest}
+    container_name: lawsphere-web-railway
+    restart: always
+    environment:
+      # Environment
+      NODE_ENV: ${NODE_ENV:-production}
+      
+      # APIs & URLs
+      DATABASE_URL: ${DATABASE_URL}
+      AI_SERVICE_URL: http://ai-service:8000/api
+      NEXTAUTH_URL: ${NEXTAUTH_URL}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      
+      # Authentication Providers
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
+      
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ai-service:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    networks:
+      - lawsphere-railway
+
+volumes:
+  postgres_railway_data:
+  redis_railway_data:
+  ollama_railway_data:
+
+networks:
+  lawsphere-railway:
+    driver: bridge
+
+# ============ Railway Deployment Notes ============
+#
+# 1. INITIAL SETUP:
+#    - Push repository to GitHub
+#    - Connect GitHub repo to Railway
+#    - Set all environment variables in Railway dashboard
+#
+# 2. FIRST DEPLOYMENT:
+#    - Ollama container will start empty
+#    - You need to pull a model:
+#      $ railway run docker exec lawsphere-ollama-railway ollama pull qwen2
+#      (or use init-ollama.sh script)
+#
+# 3. MODEL SELECTION:
+#    OLLAMA_MODEL options (test/development):
+#    - qwen2 (7B) - RECOMMENDED: balanced, fast, accurate
+#    - qwen2:3b  - Smaller, faster, less accurate
+#    - qwen2:14b - Larger, slower, more accurate
+#    - llama2:7b - Good alternative to Qwen
+#    - mistral:7b - Specialized for code/reasoning
+#
+# 4. COST COMPARISON:
+#    - Ollama (local):  $0/month (just Railway compute)
+#    - OpenAI API:      $0.30-3.00/month per user
+#    - Savings:         90-95% reduction in API costs
+#
+# 5. PERFORMANCE:
+#    - First response: 8-12s (model loading)
+#    - Subsequent:     3-5s (warm model)
+#    - Latency:        No external API calls
+#
+# 6. RESOURCE REQUIREMENTS:
+#    - Memory: 4-8GB per model
+#    - Disk: 5GB per model (automatic persistent volume)
+#    - CPU: Shared Railway container resources
+#
+# 7. FALLBACK (OPTIONAL):
+#    If you want cloud API fallback:
+#    - Set OPENAI_API_KEY and OLLAMA_ENABLED=true
+#    - Backend auto-switches on Ollama timeout
+#    - No code changes needed
+#
+# 8. MONITORING:
+#    - Railway dashboard shows all service logs
+#    - Check Ollama health: curl http://ollama:11434/api/tags
+#    - Monitor AI service: curl http://ai-service:8000/health
+#

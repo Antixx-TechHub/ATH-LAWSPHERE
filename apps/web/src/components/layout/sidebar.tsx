@@ -7,7 +7,6 @@ import { cn } from "@/lib/utils";
 import {
   Home,
   Library,
-  History,
   Settings,
   MessageSquare,
   FileText,
@@ -31,7 +30,6 @@ const navItems = [
   { href: "/dashboard/files", label: "Files", icon: FileText },
   { href: "/dashboard/notes", label: "Notes", icon: StickyNote },
   { href: "/dashboard/sessions", label: "Sessions", icon: Users },
-  { href: "/dashboard/history", label: "History", icon: History },
 ];
 
 const bottomNavItems = [

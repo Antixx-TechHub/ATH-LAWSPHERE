@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,6 +13,9 @@ import {
   Trash2,
   Clock,
   Users,
+  History,
+  RotateCcw,
+  X,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -21,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { aiClient } from "@/lib/api/ai-client";
 
 interface NotesPanelProps {
   sessionId: string;
@@ -34,39 +38,46 @@ interface Note {
   collaborators: number;
 }
 
-const mockNotes: Note[] = [
-  {
-    id: "1",
-    title: "Case Summary - Smith v. Jones",
-    content:
-      "Key points from the initial consultation:\n\n1. Client claims breach of contract\n2. Contract dated March 2024\n3. Damages estimated at $50,000\n\n**Next Steps:**\n- Request contract copy\n- Schedule follow-up meeting",
-    updatedAt: new Date(Date.now() - 1800000),
-    collaborators: 2,
-  },
-  {
-    id: "2",
-    title: "Legal Research Notes",
-    content:
-      "Relevant precedents:\n\n- ABC Corp v. XYZ Inc (2023)\n- Johnson v. State (2022)\n\nKey statutes to review:\n- Contract Law Section 45\n- Commercial Code Article 2",
-    updatedAt: new Date(Date.now() - 7200000),
-    collaborators: 1,
-  },
-  {
-    id: "3",
-    title: "Meeting Notes - Dec 20",
-    content:
-      "Discussed strategy with senior partner. Agreed to pursue mediation first before litigation.",
-    updatedAt: new Date(Date.now() - 86400000),
-    collaborators: 3,
-  },
-];
+interface NoteVersion {
+  version: number;
+  title: string;
+  content: string;
+  edited_at: string;
+  is_current: boolean;
+}
 
 export function NotesPanel({ sessionId }: NotesPanelProps) {
-  const [notes, setNotes] = useState<Note[]>(mockNotes);
+  const [notes, setNotes] = useState<Note[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState("");
+  const [showHistory, setShowHistory] = useState(false);
+  const [noteHistory, setNoteHistory] = useState<NoteVersion[]>([]);
+  const [selectedVersion, setSelectedVersion] = useState<NoteVersion | null>(null);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  useEffect(() => {
+    const load = async () => {
+      if (!sessionId) return;
+      try {
+        const res = await aiClient.listSessionNotes(sessionId);
+        const mapped: Note[] = (res.notes || []).map((n: any) => ({
+          id: n.id,
+          title: n.title,
+          content: n.content,
+          updatedAt: n.updated_at ? new Date(n.updated_at) : new Date(),
+          collaborators: 1,
+        }));
+        setNotes(mapped);
+        setSelectedNote(mapped[0] || null);
+        setEditContent(mapped[0]?.content || "");
+      } catch (err) {
+        console.error("Failed to load notes", err);
+      }
+    };
+    load();
+  }, [sessionId]);
 
   const filteredNotes = notes.filter(
     (note) =>
@@ -76,7 +87,7 @@ export function NotesPanel({ sessionId }: NotesPanelProps) {
 
   const handleCreateNote = () => {
     const newNote: Note = {
-      id: Date.now().toString(),
+      id: "draft",
       title: "Untitled Note",
       content: "",
       updatedAt: new Date(),
@@ -94,23 +105,72 @@ export function NotesPanel({ sessionId }: NotesPanelProps) {
     setEditContent(note.content);
   };
 
-  const handleSaveNote = () => {
-    if (selectedNote) {
+  const handleSaveNote = async () => {
+    if (selectedNote && sessionId) {
+      const res = await aiClient.upsertNote(sessionId, selectedNote.title || "Untitled Note", editContent, selectedNote.id === "draft" ? undefined : selectedNote.id);
+      const savedId = res.note_id || selectedNote.id;
       setNotes((prev) =>
         prev.map((n) =>
           n.id === selectedNote.id
-            ? { ...n, content: editContent, updatedAt: new Date() }
+            ? { ...n, id: savedId, content: editContent, updatedAt: new Date() }
             : n
         )
       );
+      setSelectedNote((prev) => (prev ? { ...prev, id: savedId } : prev));
       setIsEditing(false);
     }
   };
 
-  const handleDeleteNote = (noteId: string) => {
+  const handleDeleteNote = async (noteId: string) => {
+    if (noteId !== "draft") {
+      await aiClient.deleteNote(noteId);
+    }
     setNotes((prev) => prev.filter((n) => n.id !== noteId));
     if (selectedNote?.id === noteId) {
       setSelectedNote(null);
+    }
+  };
+
+  const handleViewHistory = async (noteId: string) => {
+    if (noteId === "draft") return;
+    
+    setLoadingHistory(true);
+    try {
+      const res = await aiClient.getNoteHistory(noteId);
+      setNoteHistory(res.history || []);
+      setShowHistory(true);
+      setSelectedVersion(null);
+    } catch (err) {
+      console.error("Failed to load note history", err);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  const handleRestoreVersion = async (version: number) => {
+    if (!selectedNote || selectedNote.id === "draft") return;
+    
+    try {
+      await aiClient.restoreNoteVersion(selectedNote.id, version);
+      // Reload the note content
+      const res = await aiClient.listSessionNotes(sessionId);
+      const mapped: Note[] = (res.notes || []).map((n: any) => ({
+        id: n.id,
+        title: n.title,
+        content: n.content,
+        updatedAt: n.updated_at ? new Date(n.updated_at) : new Date(),
+        collaborators: 1,
+      }));
+      setNotes(mapped);
+      const restored = mapped.find(n => n.id === selectedNote.id);
+      if (restored) {
+        setSelectedNote(restored);
+        setEditContent(restored.content);
+      }
+      setShowHistory(false);
+      setSelectedVersion(null);
+    } catch (err) {
+      console.error("Failed to restore version", err);
     }
   };
 
@@ -210,6 +270,17 @@ export function NotesPanel({ sessionId }: NotesPanelProps) {
                         Edit
                       </DropdownMenuItem>
                       <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSelectNote(note);
+                          handleViewHistory(note.id);
+                        }}
+                        disabled={note.id === "draft"}
+                      >
+                        <History className="h-4 w-4 mr-2" />
+                        View History
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
                         className="text-red-600"
                         onClick={(e) => {
                           e.stopPropagation();
@@ -287,22 +358,136 @@ export function NotesPanel({ sessionId }: NotesPanelProps) {
                   </Button>
                 </div>
               ) : (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    setIsEditing(true);
-                    setEditContent(selectedNote.content);
-                  }}
-                >
-                  <Edit className="h-4 w-4 mr-1" />
-                  Edit
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setIsEditing(true);
+                      setEditContent(selectedNote.content);
+                    }}
+                  >
+                    <Edit className="h-4 w-4 mr-1" />
+                    Edit
+                  </Button>
+                  {selectedNote.id !== "draft" && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleViewHistory(selectedNote.id)}
+                    >
+                      <History className="h-4 w-4 mr-1" />
+                      History
+                    </Button>
+                  )}
+                </div>
               )}
             </div>
           </div>
         )}
       </div>
+
+      {/* History Modal */}
+      {showHistory && selectedNote && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-neutral-900 rounded-lg w-full max-w-3xl max-h-[80vh] flex flex-col m-4">
+            {/* Header */}
+            <div className="p-4 border-b border-neutral-200 dark:border-neutral-800 flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold">Version History</h3>
+                <p className="text-sm text-neutral-500">{selectedNote.title}</p>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  setShowHistory(false);
+                  setSelectedVersion(null);
+                }}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-hidden flex">
+              {/* Version List */}
+              <div className="w-1/3 border-r border-neutral-200 dark:border-neutral-800 overflow-y-auto">
+                {loadingHistory ? (
+                  <div className="p-4 text-center text-neutral-500">
+                    Loading history...
+                  </div>
+                ) : noteHistory.length === 0 ? (
+                  <div className="p-4 text-center text-neutral-500">
+                    <History className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>No version history</p>
+                  </div>
+                ) : (
+                  <div className="p-2 space-y-1">
+                    {noteHistory.map((v) => (
+                      <div
+                        key={v.version}
+                        onClick={() => setSelectedVersion(v)}
+                        className={cn(
+                          "p-3 rounded-lg cursor-pointer transition-colors",
+                          selectedVersion?.version === v.version
+                            ? "bg-primary-100 dark:bg-primary-900/20"
+                            : "hover:bg-neutral-50 dark:hover:bg-neutral-800"
+                        )}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-sm">
+                            Version {v.version}
+                          </span>
+                          {v.is_current && (
+                            <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded">
+                              Current
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-neutral-500 mt-1">
+                          {new Date(v.edited_at).toLocaleString()}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Version Preview */}
+              <div className="w-2/3 flex flex-col">
+                {selectedVersion ? (
+                  <>
+                    <div className="p-4 flex-1 overflow-y-auto">
+                      <h4 className="font-medium mb-2">{selectedVersion.title}</h4>
+                      <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap text-neutral-600 dark:text-neutral-300">
+                        {selectedVersion.content || (
+                          <span className="text-neutral-400">Empty content</span>
+                        )}
+                      </div>
+                    </div>
+                    {!selectedVersion.is_current && (
+                      <div className="p-4 border-t border-neutral-200 dark:border-neutral-800">
+                        <Button
+                          size="sm"
+                          onClick={() => handleRestoreVersion(selectedVersion.version)}
+                        >
+                          <RotateCcw className="h-4 w-4 mr-1" />
+                          Restore This Version
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="flex-1 flex items-center justify-center text-neutral-500">
+                    <p>Select a version to preview</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

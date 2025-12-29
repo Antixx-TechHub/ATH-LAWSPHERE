@@ -33,8 +33,8 @@ class Settings(BaseSettings):
         "http://localhost:3001",
     ]
     
-    # Database
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/lawsphere"
+    # Database (Docker PostgreSQL with pgvector)
+    DATABASE_URL: str = "postgresql+asyncpg://lawsphere:lawsphere_secret@localhost:5433/lawsphere"
     
     # Redis
     REDIS_URL: str = "redis://localhost:6379"
@@ -54,8 +54,14 @@ class Settings(BaseSettings):
     ANTHROPIC_API_KEY: str = ""
     GOOGLE_API_KEY: str = ""
     
-    # Default Model (gemini-flash, gemini-pro, gpt-4o, claude-3-sonnet, etc.)
-    DEFAULT_MODEL: str = "gemini-flash"
+    # Local LLM (Ollama)
+    OLLAMA_ENABLED: bool = False
+    OLLAMA_BASE_URL: str = "http://localhost:11434"
+    OLLAMA_MODEL: str = "qwen2"
+    
+    # Default Model (gpt-5-mini, gpt-4o, gemini-flash, gpt-4o, claude-3-sonnet, etc.)
+    # If OLLAMA_ENABLED=true, will use OLLAMA_MODEL instead
+    DEFAULT_MODEL: str = "gpt-5-mini"
     
     # LangSmith
     LANGCHAIN_TRACING_V2: bool = True

@@ -20,6 +20,7 @@ class ModelType(str, Enum):
     GPT4 = "gpt-4"
     GPT4O = "gpt-4o"
     GPT4_TURBO = "gpt-4-turbo"
+    GPT5_MINI = "gpt-5-mini"
     CLAUDE_3_OPUS = "claude-3-opus"
     CLAUDE_3_SONNET = "claude-3-sonnet"
     CLAUDE_3_HAIKU = "claude-3-haiku"
@@ -53,6 +54,14 @@ class ModelConfig:
             "context_window": 128000,
             "cost_input": 0.01,
             "cost_output": 0.03,
+            "max_tokens": 4096,
+        },
+        ModelType.GPT5_MINI: {
+            "provider": "openai",
+            "model_name": "gpt-5-mini",
+            "context_window": 128000,
+            "cost_input": 0.0001,
+            "cost_output": 0.0004,
             "max_tokens": 4096,
         },
         ModelType.CLAUDE_3_OPUS: {

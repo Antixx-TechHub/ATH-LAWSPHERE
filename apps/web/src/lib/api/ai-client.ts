@@ -19,6 +19,7 @@ interface ChatRequest {
 
 interface ChatResponse {
   id: string;
+  session_id: string;
   content: string;
   model: string;
   usage: {
@@ -43,6 +44,7 @@ interface TrustInfo {
 
 interface TrustChatResponse {
   id: string;
+  session_id?: string;
   message: {
     role: 'assistant' | 'user' | 'system';
     content: string;
@@ -87,18 +89,26 @@ class AIClient {
 
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    timeoutMs: number = 15000
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
     console.log('[AIClient] Request:', url);
 
-    const response = await fetch(url, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          ...options.headers,
+        },
+      });
+
+      clearTimeout(timeoutId);
 
     console.log('[AIClient] Response status:', response.status);
 
@@ -126,6 +136,13 @@ class AIClient {
       console.log('[AIClient] content type:', typeof data.message.content);
     }
     return data;
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') {
+        throw new Error('Request timed out - AI service may be unavailable');
+      }
+      throw error;
+    }
   }
 
   /**
@@ -135,7 +152,7 @@ class AIClient {
     return this.request<ChatResponse>('/api/chat/completions', {
       method: 'POST',
       body: JSON.stringify(request),
-    });
+    }, 60000);  // 60 second timeout for LLM calls
   }
 
   /**
@@ -143,6 +160,7 @@ class AIClient {
    */
   async trustChat(request: ChatRequest): Promise<TrustChatResponse> {
     // Always send all optional fields and ensure messages array is present
+    // Use longer timeout (60 seconds) for LLM API calls
     return this.request<TrustChatResponse>('/api/chat/trust/completions', {
       method: 'POST',
       body: JSON.stringify({
@@ -153,7 +171,7 @@ class AIClient {
         ...request,
         messages: request.messages || [],
       }),
-    });
+    }, 60000);  // 60 second timeout for LLM calls
   }
 
   /**
@@ -217,11 +235,51 @@ class AIClient {
   }
 
   /**
+   * Sessions
+   */
+  async createSession(title?: string, user_id?: string): Promise<{ id: string; title: string }> {
+    return this.request('/api/sessions', {
+      method: 'POST',
+      body: JSON.stringify({ title, user_id }),
+    });
+  }
+
+  async listSessions(user_id?: string): Promise<Array<{ id: string; title: string; updated_at: string; last_message_preview?: string }>> {
+    const query = user_id ? `?user_id=${encodeURIComponent(user_id)}` : '';
+    return this.request(`/api/sessions${query}`);
+  }
+
+  async getSessionContext(sessionId: string): Promise<{ messages: any[]; files: any[]; notes: any[] }> {
+    return this.request(`/api/sessions/${sessionId}/context`);
+  }
+
+  async listSessionFiles(sessionId: string): Promise<{ files: any[] }> {
+    return this.request(`/api/sessions/${sessionId}/files`);
+  }
+
+  async listSessionNotes(sessionId: string): Promise<{ notes: any[] }> {
+    return this.request(`/api/sessions/${sessionId}/notes`);
+  }
+
+  async upsertNote(sessionId: string, title: string, content: string, noteId?: string): Promise<{ note_id: string }> {
+    return this.request(`/api/sessions/${sessionId}/notes`, {
+      method: 'POST',
+      body: JSON.stringify({ title, content, note_id: noteId }),
+    });
+  }
+
+  async deleteNote(noteId: string): Promise<{ status: string }> {
+    return this.request(`/api/sessions/notes/${noteId}`, { method: 'DELETE' });
+  }
+
+  /**
    * Upload a file for processing
    */
-  async uploadFile(file: File): Promise<{ file_id: string; status: string }> {
+  async uploadFile(file: File, sessionId?: string, userId?: string): Promise<{ file_id: string; status: string }> {
     const formData = new FormData();
     formData.append('file', file);
+    if (sessionId) formData.append('session_id', sessionId);
+    if (userId) formData.append('user_id', userId);
 
     const response = await fetch(`${this.baseUrl}/api/files/upload`, {
       method: 'POST',
@@ -244,6 +302,13 @@ class AIClient {
     text?: string;
   }> {
     return this.request(`/api/files/${fileId}/status`);
+  }
+
+  /**
+   * Delete a file
+   */
+  async deleteFile(fileId: string): Promise<{ status: string; file_id: string }> {
+    return this.request(`/api/files/${fileId}` , { method: 'DELETE' });
   }
 
   /**
@@ -295,6 +360,31 @@ class AIClient {
     cloud_models: Array<{ id: string; name: string; status: string }>;
   }> {
     return this.request('/api/chat/trust/models');
+  }
+
+  /**
+   * Get note version history
+   */
+  async getNoteHistory(noteId: string): Promise<{
+    note_id: string;
+    history: Array<{
+      version: number;
+      title: string;
+      content: string;
+      edited_at: string;
+      is_current: boolean;
+    }>;
+  }> {
+    return this.request(`/api/sessions/notes/${noteId}/history`);
+  }
+
+  /**
+   * Restore a note to a previous version
+   */
+  async restoreNoteVersion(noteId: string, version: number): Promise<{ status: string; version: number }> {
+    return this.request(`/api/sessions/notes/${noteId}/restore/${version}`, {
+      method: 'POST',
+    });
   }
 }
 

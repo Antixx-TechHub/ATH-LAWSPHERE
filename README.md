@@ -215,7 +215,55 @@ apps/ai-service/
 | Claude 3 Opus | Anthropic | Long documents |
 | Claude 3 Sonnet | Anthropic | Balanced performance |
 | Gemini Pro | Google | Fast responses |
+## 🚀 Deployment & Local LLMs
 
+### Quick Start (5 Minutes)
+
+**Development with Free Local LLMs:**
+```bash
+docker-compose -f docker-compose.dev.local.yml up -d
+# Includes Ollama with Qwen 2.5 7B (free, fast, accurate)
+```
+
+**Production on Railway (90% Cost Savings):**
+```bash
+# See: docs/RAILWAY_DEPLOYMENT.md
+# Deploys to Railway.app with optional Ollama
+# Cost: ~$15/month vs $300+/month with cloud APIs
+```
+
+**Team Development:**
+```bash
+./scripts/team-dev.sh          # Mac/Linux
+./scripts/team-dev.cmd         # Windows
+# Interactive menu for all development tasks
+```
+
+### Local LLM Models
+
+| Model | Size | Speed | Quality | Memory |
+|-------|------|-------|---------|--------|
+| Qwen 2.5 3B | 3B | ⚡⚡⚡ | ⭐⭐⭐ | 2GB |
+| **Qwen 2.5 7B** | **7B** | **⚡⚡** | **⭐⭐⭐⭐** | **4GB** |
+| Qwen 2.5 14B | 14B | ⚡ | ⭐⭐⭐⭐⭐ | 8GB |
+| Llama 3.1 8B | 8B | ⚡⚡ | ⭐⭐⭐⭐ | 4GB |
+
+**Recommended:** Qwen 2.5 7B - best balance
+
+### Documentation
+
+- **Local LLM Guide:** [docs/LOCAL_LLM_SIMPLIFIED.md](docs/LOCAL_LLM_SIMPLIFIED.md)
+- **Quick Reference:** [docs/LOCAL_LLM_QUICK_REF.md](docs/LOCAL_LLM_QUICK_REF.md)
+- **Railway Deployment:** [docs/RAILWAY_DEPLOYMENT.md](docs/RAILWAY_DEPLOYMENT.md)
+- **Team Setup:** [docs/TEAM_SETUP.md](docs/TEAM_SETUP.md)
+
+## 📞 Support
+
+Need help? Check the relevant documentation:
+1. Local development → LOCAL_LLM_SIMPLIFIED.md
+2. Team setup → TEAM_SETUP.md
+3. Railway deployment → RAILWAY_DEPLOYMENT.md
+4. Quick commands → LOCAL_LLM_QUICK_REF.md
 ## �📄 License
 
 MIT License - see LICENSE file for details

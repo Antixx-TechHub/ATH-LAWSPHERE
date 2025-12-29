@@ -38,19 +38,27 @@ export async function POST(request: Request) {
       },
     });
 
-    // Assign default role
-    const lawyerRole = await prisma.role.findUnique({
+    // Assign default role (lawyer) - create if it doesn't exist
+    let lawyerRole = await prisma.role.findUnique({
       where: { name: "lawyer" },
     });
 
-    if (lawyerRole) {
-      await prisma.userRole.create({
+    if (!lawyerRole) {
+      // Create the lawyer role if it doesn't exist (self-healing for first user)
+      lawyerRole = await prisma.role.create({
         data: {
-          userId: user.id,
-          roleId: lawyerRole.id,
+          name: "lawyer",
+          description: "Legal professional with standard access",
         },
       });
     }
+
+    await prisma.userRole.create({
+      data: {
+        userId: user.id,
+        roleId: lawyerRole.id,
+      },
+    });
 
     // Create audit log
     await prisma.auditLog.create({
@@ -77,7 +85,26 @@ export async function POST(request: Request) {
       );
     }
 
+    // Log detailed error for debugging
     console.error("Registration error:", error);
+    
+    // Check for common Prisma errors
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    
+    if (errorMessage.includes("connect") || errorMessage.includes("ECONNREFUSED")) {
+      return NextResponse.json(
+        { message: "Database connection error. Please try again later." },
+        { status: 503 }
+      );
+    }
+    
+    if (errorMessage.includes("does not exist") || errorMessage.includes("relation")) {
+      return NextResponse.json(
+        { message: "Database not initialized. Please contact support." },
+        { status: 503 }
+      );
+    }
+
     return NextResponse.json(
       { message: "An unexpected error occurred" },
       { status: 500 }

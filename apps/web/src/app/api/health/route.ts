@@ -14,6 +14,8 @@ export async function GET() {
     env: {
       NODE_ENV: process.env.NODE_ENV || "not set",
       DATABASE_URL_SET: !!process.env.DATABASE_URL,
+      PGHOST_SET: !!process.env.PGHOST,
+      PGUSER_SET: !!process.env.PGUSER,
       NEXTAUTH_URL: process.env.NEXTAUTH_URL || "not set",
     }
   };

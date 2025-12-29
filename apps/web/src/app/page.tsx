@@ -1,13 +1,7 @@
 import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 
 export default async function Home() {
-  const session = await getServerSession(authOptions);
-
-  if (session) {
-    redirect("/dashboard");
-  } else {
-    redirect("/auth/login");
-  }
+  // Skip session check on home page to avoid database connection errors
+  // Users will be redirected to login if not authenticated on protected routes
+  redirect("/auth/login");
 }

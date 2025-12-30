@@ -1,14 +1,14 @@
 # Railway configuration
-# Using Dockerfile for build (node:20-slim with OpenSSL for Prisma)
+# Build from apps/web with its own Dockerfile
 
 [build]
 builder = "dockerfile"
-dockerfilePath = "Dockerfile"
+dockerfilePath = "apps/web/Dockerfile"
+watchPatterns = ["apps/web/**"]
 
 [deploy]
 healthcheckPath = "/_health"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
-# Explicitly tell Railway which port to route to
 numReplicas = 1

@@ -1,63 +1,56 @@
-# Stage 1: Dependencies
-FROM node:20-alpine AS deps
+# Self-contained Dockerfile for apps/web
+# Use this with Railway Root Directory = "apps/web"
+
+FROM node:20-slim AS builder
 WORKDIR /app
+
+# Install OpenSSL for Prisma
+RUN apt-get update && apt-get install -y openssl libssl-dev ca-certificates && rm -rf /var/lib/apt/lists/*
+
+# Copy package files
+COPY package.json ./
+
+# Copy prisma schema BEFORE npm install (for postinstall hook)
+COPY prisma ./prisma/
 
 # Install dependencies
-COPY package.json package-lock.json* ./
-COPY apps/web/package.json ./apps/web/
-RUN npm ci --workspace=apps/web
+RUN npm install
 
-# Stage 2: Builder
-FROM node:20-alpine AS builder
-WORKDIR /app
-
-# Copy dependencies
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
-
-# Copy source files
+# Copy all source files
 COPY . .
 
-# Generate Prisma client
-WORKDIR /app/apps/web
+# Generate Prisma client and build Next.js
 RUN npx prisma generate
-
-# Build the application
-ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
-# Stage 3: Runner  
+# Runner stage
 FROM node:20-slim AS runner
 WORKDIR /app
 
-ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
-
-# Install OpenSSL for Prisma (required on slim/debian)
+# Install OpenSSL for Prisma runtime
 RUN apt-get update && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 
-# Create non-root user
-RUN groupadd --system --gid 1001 nodejs && \
-    useradd --system --uid 1001 --gid nodejs nextjs
+ENV NODE_ENV=production
 
-# Copy package files for runtime
-COPY --from=builder /app/apps/web/package.json ./package.json
-COPY --from=builder /app/apps/web/server.js ./server.js
-
-# Copy Next.js build output (non-standalone - needs node_modules)
-COPY --from=builder /app/apps/web/.next ./.next
-COPY --from=builder /app/apps/web/public ./public
-COPY --from=builder /app/apps/web/prisma ./prisma
-
-# Copy node_modules - from root (hoisted) AND apps/web if exists
+# Copy built app
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/server.js ./server.js
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/next.config.js ./next.config.js
 COPY --from=builder /app/node_modules ./node_modules
 
-# Validate build output exists
+# Validate build
 RUN echo "=== Validating build ===" && \
-    ls -la /app/.next/ && \
-    echo "=== .next folder exists ===" && \
-    ls -la /app/node_modules/next/dist/ | head -5 && \
-    echo "=== next module exists ==="
+    ls -la /app/.next/ | head -5 && \
+    test -f /app/.next/build-manifest.json && \
+    echo "=== Build OK ==="
+
+EXPOSE 8080
+
+# Start with custom server
+CMD ["node", "server.js"]
 
 # Set permissions
 RUN chown -R nextjs:nodejs /app

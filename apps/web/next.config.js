@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Enable standalone output for Docker deployments
+  output: 'standalone',
   // Do not fail production builds on ESLint errors; keep linting for dev/CI
   eslint: {
     ignoreDuringBuilds: true,

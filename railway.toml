@@ -1,5 +1,9 @@
 # Railway configuration
-# Let Railway use Nixpacks (auto-detection) but configure via nixpacks.toml
+# Using Dockerfile for build (node:20-slim with OpenSSL for Prisma)
+
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
 
 [deploy]
 healthcheckPath = "/api/health"

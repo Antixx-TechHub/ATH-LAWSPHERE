@@ -1,6 +1,11 @@
-# Railway Dockerfile - builds the web app
-FROM node:20-alpine AS deps
+# Railway Dockerfile - builds the web app with custom server.js
+# Using node:20-slim instead of alpine for better OpenSSL/Prisma compatibility
+
+FROM node:20-slim AS deps
 WORKDIR /app
+
+# Install OpenSSL for Prisma
+RUN apt-get update && apt-get install -y openssl libssl-dev ca-certificates && rm -rf /var/lib/apt/lists/*
 
 # Install dependencies for the monorepo
 COPY package.json package-lock.json* ./
@@ -12,46 +17,44 @@ COPY apps/web/prisma ./apps/web/prisma
 RUN npm ci
 
 # Builder stage
-FROM node:20-alpine AS builder
+FROM node:20-slim AS builder
 WORKDIR /app
+
+# Install OpenSSL for Prisma generate
+RUN apt-get update && apt-get install -y openssl libssl-dev && rm -rf /var/lib/apt/lists/*
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Generate Prisma client and build
+# Generate Prisma client and build Next.js
 WORKDIR /app/apps/web
 RUN npx prisma generate
 RUN npm run build
 
-# Runner stage
-FROM node:20-alpine AS runner
+# Runner stage - use slim for production too
+FROM node:20-slim AS runner
 WORKDIR /app
+
+# Install OpenSSL for Prisma runtime
+RUN apt-get update && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 
 ENV NODE_ENV=production
 
-# Copy built application
-COPY --from=builder /app/apps/web/.next/standalone ./
-COPY --from=builder /app/apps/web/.next/static ./.next/static
+# Copy the entire apps/web folder since we use custom server.js (not standalone)
+COPY --from=builder /app/apps/web/package.json ./package.json
+COPY --from=builder /app/apps/web/server.js ./server.js
+COPY --from=builder /app/apps/web/.next ./.next
 COPY --from=builder /app/apps/web/public ./public
 COPY --from=builder /app/apps/web/prisma ./prisma
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder /app/apps/web/next.config.js ./next.config.js
 
-# Create startup script that logs environment variables
-RUN echo '#!/bin/sh' > /app/start.sh && \
-    echo 'echo "=== Environment Variables Debug ===" ' >> /app/start.sh && \
-    echo 'echo "DATABASE_URL set: $(test -n \"$DATABASE_URL\" && echo YES || echo NO)"' >> /app/start.sh && \
-    echo 'echo "PGHOST: $PGHOST"' >> /app/start.sh && \
-    echo 'echo "NODE_ENV: $NODE_ENV"' >> /app/start.sh && \
-    echo 'echo "All env vars: $(env | grep -v SECRET | grep -v PASSWORD | grep -v KEY | head -20)"' >> /app/start.sh && \
-    echo 'echo "===================================" ' >> /app/start.sh && \
-    echo 'exec node server.js' >> /app/start.sh && \
-    chmod +x /app/start.sh
+# Copy node_modules (needed for custom server.js and runtime)
+COPY --from=builder /app/node_modules ./node_modules
 
 EXPOSE 3000
 
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# Start the server - environment variables are injected at runtime by Railway
-CMD ["/app/start.sh"]
+# Start the custom server directly
+CMD ["node", "server.js"]

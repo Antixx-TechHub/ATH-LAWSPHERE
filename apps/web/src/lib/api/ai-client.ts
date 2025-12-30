@@ -1,9 +1,18 @@
 /**
  * API Client for AI Service communication
+ * 
+ * In production, this calls Next.js API routes which proxy to the AI service.
+ * The browser cannot directly reach the AI service.
  */
 
-const AI_SERVICE_URL = process.env.NEXT_PUBLIC_AI_SERVICE_URL || 'http://localhost:8000';
-console.log('[AIClient] AI_SERVICE_URL configured as:', AI_SERVICE_URL);
+// For client-side, always use relative URLs to hit Next.js API routes
+// The API routes will proxy to the actual AI service server-side
+const isServer = typeof window === 'undefined';
+const AI_SERVICE_URL = isServer 
+  ? (process.env.AI_SERVICE_URL || 'http://localhost:8000')  // Server-side: direct to AI service
+  : '';  // Client-side: use relative URLs to Next.js API routes
+
+console.log('[AIClient] Running on:', isServer ? 'server' : 'client');
 
 interface ChatRequest {
   messages: Array<{

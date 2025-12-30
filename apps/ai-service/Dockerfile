@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
-COPY apps/ai-service/requirements.txt .
+COPY requirements.txt .
 RUN pip install --no-cache-dir --user -r requirements.txt
 
 # Runtime stage
@@ -32,7 +32,7 @@ RUN groupadd --gid 1001 python && \
 COPY --from=builder /root/.local /home/python/.local
 
 # Copy application code
-COPY apps/ai-service /app
+COPY . /app
 
 # Set ownership
 RUN chown -R python:python /app
@@ -42,6 +42,9 @@ USER python
 # Add local bin to PATH
 ENV PATH=/home/python/.local/bin:$PATH
 
+# Railway uses PORT env var
+ENV PORT=8000
+
 # Expose port
 EXPOSE 8000
 
@@ -49,5 +52,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
 
-# Run the application
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run the application - use PORT from Railway
+CMD uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}

@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y openssl libssl-dev ca-certificates && r
 # Copy ALL files first (simpler, avoids cache issues)
 COPY . .
 
-RUN npm ci
+RUN npm install
 
 # Builder stage
 FROM node:20-slim AS builder

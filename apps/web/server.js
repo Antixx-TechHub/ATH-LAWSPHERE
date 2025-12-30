@@ -12,6 +12,17 @@ const port = parseInt(process.env.PORT || '3000', 10);
 // Debug logging for Railway
 console.log(`[Server] Starting with NODE_ENV=${process.env.NODE_ENV}`);
 console.log(`[Server] Will bind to port ${port}`);
+console.log(`[Server] Process PID: ${process.pid}`);
+
+// Catch uncaught exceptions
+process.on('uncaughtException', (err) => {
+  console.error('[Server] UNCAUGHT EXCEPTION:', err);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[Server] UNHANDLED REJECTION at:', promise, 'reason:', reason);
+});
 
 // Don't pass hostname to next() - it can cause issues in production
 const app = next({ dev });
@@ -87,5 +98,19 @@ app.prepare().then(() => {
   server.listen(port, '0.0.0.0', () => {
     console.log(`[Server] HTTP server listening on 0.0.0.0:${port}`);
     console.log(`> Ready on http://0.0.0.0:${port}`);
+    console.log(`[Server] Server is now accepting connections`);
   });
+
+  server.on('error', (err) => {
+    console.error('[Server] Server error:', err);
+    process.exit(1);
+  });
+
+  // Keep process alive
+  setInterval(() => {
+    console.log(`[Server] Heartbeat - still running on port ${port}`);
+  }, 30000);
+}).catch((err) => {
+  console.error('[Server] Failed to prepare Next.js app:', err);
+  process.exit(1);
 });

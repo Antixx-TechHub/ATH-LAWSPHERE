@@ -49,8 +49,8 @@ COPY --from=builder /app/apps/web/.next ./.next
 COPY --from=builder /app/apps/web/public ./public
 COPY --from=builder /app/apps/web/prisma ./prisma
 
-# Copy node_modules (required for custom server + non-standalone)
-COPY --from=builder /app/apps/web/node_modules ./node_modules
+# Copy node_modules - from root (hoisted) AND apps/web if exists
+COPY --from=builder /app/node_modules ./node_modules
 
 # Create startup script that runs migrations then starts the app
 RUN echo '#!/bin/sh' > /app/start.sh && \

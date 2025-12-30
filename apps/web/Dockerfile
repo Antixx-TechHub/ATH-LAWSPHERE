@@ -52,14 +52,12 @@ COPY --from=builder /app/apps/web/prisma ./prisma
 # Copy node_modules - from root (hoisted) AND apps/web if exists
 COPY --from=builder /app/node_modules ./node_modules
 
-# Create startup script that runs migrations then starts the app
-RUN echo '#!/bin/sh' > /app/start.sh && \
-    echo 'set -e' >> /app/start.sh && \
-    echo 'echo "Running database migrations..."' >> /app/start.sh && \
-    echo 'npx prisma migrate deploy --schema=./prisma/schema.prisma || echo "Migration warning - continuing..."' >> /app/start.sh && \
-    echo 'echo "Starting application..."' >> /app/start.sh && \
-    echo 'exec node server.js' >> /app/start.sh && \
-    chmod +x /app/start.sh
+# Validate build output exists
+RUN echo "=== Validating build ===" && \
+    ls -la /app/.next/ && \
+    echo "=== .next folder exists ===" && \
+    ls -la /app/node_modules/next/dist/ | head -5 && \
+    echo "=== next module exists ==="
 
 # Set permissions
 RUN chown -R nextjs:nodejs /app
@@ -72,4 +70,5 @@ EXPOSE 8080
 # Default port (Railway overrides this)
 ENV PORT=8080
 
-CMD ["/app/start.sh"]
+# Run directly without shell script to simplify debugging
+CMD ["node", "server.js"]

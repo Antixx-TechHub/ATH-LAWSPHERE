@@ -5,6 +5,8 @@
 const { createServer } = require('http');
 const { parse } = require('url');
 const next = require('next');
+const fs = require('fs');
+const path = require('path');
 
 const dev = process.env.NODE_ENV !== 'production';
 const port = parseInt(process.env.PORT || '3000', 10);
@@ -13,6 +15,23 @@ const port = parseInt(process.env.PORT || '3000', 10);
 console.log(`[Server] Starting with NODE_ENV=${process.env.NODE_ENV}`);
 console.log(`[Server] Will bind to port ${port}`);
 console.log(`[Server] Process PID: ${process.pid}`);
+console.log(`[Server] Current directory: ${process.cwd()}`);
+
+// Validate .next folder exists
+const nextDir = path.join(process.cwd(), '.next');
+if (fs.existsSync(nextDir)) {
+  console.log(`[Server] .next folder exists at: ${nextDir}`);
+  const buildManifest = path.join(nextDir, 'build-manifest.json');
+  if (fs.existsSync(buildManifest)) {
+    console.log(`[Server] build-manifest.json exists - build is valid`);
+  } else {
+    console.error(`[Server] WARNING: build-manifest.json missing!`);
+  }
+} else {
+  console.error(`[Server] FATAL: .next folder does not exist at ${nextDir}`);
+  console.error(`[Server] Directory contents:`, fs.readdirSync(process.cwd()));
+  process.exit(1);
+}
 
 // Catch uncaught exceptions
 process.on('uncaughtException', (err) => {

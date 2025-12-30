@@ -8,7 +8,8 @@ const next = require('next');
 
 const dev = process.env.NODE_ENV !== 'production';
 // Use 0.0.0.0 in production to accept external connections (required for Railway/Docker)
-const hostname = process.env.HOSTNAME || (dev ? 'localhost' : '0.0.0.0');
+// Note: Don't use HOSTNAME env var - Railway sets it to the service hostname
+const hostname = dev ? 'localhost' : '0.0.0.0';
 const port = parseInt(process.env.PORT || '3000', 10);
 
 const app = next({ dev, hostname, port });

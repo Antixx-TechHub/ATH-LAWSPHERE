@@ -66,8 +66,10 @@ RUN chown -R nextjs:nodejs /app
 
 USER nextjs
 
-EXPOSE 3000
+# Railway sets PORT dynamically, typically 8080
+EXPOSE 8080
 
-ENV PORT=3000
+# Default port (Railway overrides this)
+ENV PORT=8080
 
 CMD ["/app/start.sh"]

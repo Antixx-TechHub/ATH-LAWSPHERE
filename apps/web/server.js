@@ -32,6 +32,13 @@ app.prepare().then(() => {
   console.log('[Server] Next.js app prepared, creating HTTP server...');
   
   const server = createServer((req, res) => {
+    // Raw health check that bypasses Next.js
+    if (req.url === '/_health') {
+      res.writeHead(200, { 'Content-Type': 'text/plain' });
+      res.end('OK');
+      return;
+    }
+    
     const parsedUrl = parse(req.url, true);
     handle(req, res, parsedUrl);
   });

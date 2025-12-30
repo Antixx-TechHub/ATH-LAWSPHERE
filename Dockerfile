@@ -5,6 +5,10 @@ WORKDIR /app
 # Install dependencies for the monorepo
 COPY package.json package-lock.json* ./
 COPY apps/web/package.json ./apps/web/
+
+# Copy prisma schema BEFORE npm ci so postinstall can find it
+COPY apps/web/prisma ./apps/web/prisma
+
 RUN npm ci
 
 # Builder stage

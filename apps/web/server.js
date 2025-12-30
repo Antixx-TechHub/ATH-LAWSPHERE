@@ -7,7 +7,8 @@ const { parse } = require('url');
 const next = require('next');
 
 const dev = process.env.NODE_ENV !== 'production';
-const hostname = 'localhost';
+// Use 0.0.0.0 in production to accept external connections (required for Railway/Docker)
+const hostname = process.env.HOSTNAME || (dev ? 'localhost' : '0.0.0.0');
 const port = parseInt(process.env.PORT || '3000', 10);
 
 const app = next({ dev, hostname, port });
@@ -77,7 +78,8 @@ app.prepare().then(() => {
     });
   });
 
-  server.listen(port, () => {
+  // Bind to hostname (0.0.0.0 in production for external access)
+  server.listen(port, hostname, () => {
     console.log(`> Ready on http://${hostname}:${port}`);
   });
 });

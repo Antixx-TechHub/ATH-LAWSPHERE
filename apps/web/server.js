@@ -12,6 +12,10 @@ const dev = process.env.NODE_ENV !== 'production';
 const hostname = dev ? 'localhost' : '0.0.0.0';
 const port = parseInt(process.env.PORT || '3000', 10);
 
+// Debug logging for Railway
+console.log(`[Server] Starting with NODE_ENV=${process.env.NODE_ENV}`);
+console.log(`[Server] Will bind to ${hostname}:${port}`);
+
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
 

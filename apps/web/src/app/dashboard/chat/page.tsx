@@ -119,7 +119,7 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="h-[calc(100vh-8rem)]">
+    <div className="h-[calc(100vh-6rem)]">
       {/* Error Banner */}
       {error && (
         <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">

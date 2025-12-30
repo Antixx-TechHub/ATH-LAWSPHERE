@@ -52,61 +52,60 @@ const socialLinks = [
 export function Footer() {
   return (
     <footer className="bg-gradient-to-r from-neutral-50 to-white dark:from-neutral-900 dark:to-neutral-800 text-neutral-600 dark:text-neutral-300 border-t border-neutral-200 dark:border-neutral-700">
-      <div className="max-w-7xl mx-auto px-6 py-5">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          {/* Quick Links - Horizontal */}
-          <div className="flex items-center gap-5">
-            {quickLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="text-xs font-medium text-neutral-500 dark:text-neutral-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
-              >
-                {link.label}
-              </Link>
-            ))}
-          </div>
-
-          {/* Social Links */}
-          <div className="flex items-center gap-3">
-            {socialLinks.map((social) => (
-              <a
-                key={social.label}
-                href={social.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-2 rounded-lg bg-white dark:bg-neutral-800 shadow-sm border border-neutral-200 dark:border-neutral-700 hover:shadow-md transition-all hover:scale-110"
-                aria-label={social.label}
-              >
-                {social.icon}
-              </a>
-            ))}
-          </div>
-        </div>
-
-        {/* Logo - Left, Powered By & Copyright - Center */}
-        <div className="mt-3 pt-3 border-t border-neutral-200 dark:border-neutral-700 flex items-center">
+      <div className="max-w-7xl mx-auto px-6 py-3">
+        {/* Single Row: Logo - Center Content - Links & Social */}
+        <div className="flex items-center justify-between">
           {/* Left: Logo */}
           <div className="flex-shrink-0">
             <Image
               src="/company_logo.svg"
               alt="Antixx TechHub"
-              width={120}
-              height={40}
-              className="h-10 w-auto"
+              width={100}
+              height={32}
+              className="h-8 w-auto"
             />
           </div>
+
           {/* Center: Powered By & Copyright */}
-          <div className="flex-1 flex flex-col items-center gap-1">
-            <p className="text-sm text-neutral-600 dark:text-neutral-300">
+          <div className="flex flex-col items-center gap-0.5">
+            <p className="text-xs text-neutral-600 dark:text-neutral-300">
               powered by <span className="font-bold text-[#1A365D] dark:text-cyan-400">Antixx TechHub Pvt. Ltd.</span>
             </p>
             <p className="text-[10px] text-neutral-400 dark:text-neutral-500">
               © 2014-2025 Antixx TechHub Pvt. Ltd. – All Rights Reserved.
             </p>
           </div>
-          {/* Spacer to balance the layout */}
-          <div className="w-[120px] flex-shrink-0"></div>
+
+          {/* Right: Links on top, Social icons below */}
+          <div className="flex flex-col items-end gap-1.5">
+            {/* Quick Links */}
+            <div className="flex items-center gap-4">
+              {quickLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="text-[11px] font-medium text-neutral-500 dark:text-neutral-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors"
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+            {/* Social Links */}
+            <div className="flex items-center gap-2">
+              {socialLinks.map((social) => (
+                <a
+                  key={social.label}
+                  href={social.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-1.5 rounded-md bg-white dark:bg-neutral-800 shadow-sm border border-neutral-200 dark:border-neutral-700 hover:shadow-md transition-all hover:scale-110"
+                  aria-label={social.label}
+                >
+                  {social.icon}
+                </a>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </footer>

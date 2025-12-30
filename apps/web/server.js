@@ -7,19 +7,19 @@ const { parse } = require('url');
 const next = require('next');
 
 const dev = process.env.NODE_ENV !== 'production';
-// Use 0.0.0.0 in production to accept external connections (required for Railway/Docker)
-// Note: Don't use HOSTNAME env var - Railway sets it to the service hostname
-const hostname = dev ? 'localhost' : '0.0.0.0';
 const port = parseInt(process.env.PORT || '3000', 10);
 
 // Debug logging for Railway
 console.log(`[Server] Starting with NODE_ENV=${process.env.NODE_ENV}`);
-console.log(`[Server] Will bind to ${hostname}:${port}`);
+console.log(`[Server] Will bind to port ${port}`);
 
-const app = next({ dev, hostname, port });
+// Don't pass hostname to next() - it can cause issues in production
+const app = next({ dev });
 const handle = app.getRequestHandler();
 
 app.prepare().then(() => {
+  console.log('[Server] Next.js app prepared, creating HTTP server...');
+  
   const server = createServer((req, res) => {
     const parsedUrl = parse(req.url, true);
     handle(req, res, parsedUrl);
@@ -83,8 +83,10 @@ app.prepare().then(() => {
     });
   });
 
-  // Bind to hostname (0.0.0.0 in production for external access)
-  server.listen(port, hostname, () => {
-    console.log(`> Ready on http://${hostname}:${port}`);
+  // Listen on all interfaces (0.0.0.0) for Docker/Railway
+  // Don't specify hostname - let it default to all interfaces
+  server.listen(port, () => {
+    console.log(`[Server] HTTP server listening on port ${port}`);
+    console.log(`> Ready on http://0.0.0.0:${port}`);
   });
 });

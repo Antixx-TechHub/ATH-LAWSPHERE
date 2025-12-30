@@ -83,10 +83,9 @@ app.prepare().then(() => {
     });
   });
 
-  // Listen on all interfaces (0.0.0.0) for Docker/Railway
-  // Don't specify hostname - let it default to all interfaces
-  server.listen(port, () => {
-    console.log(`[Server] HTTP server listening on port ${port}`);
+  // Explicitly bind to 0.0.0.0 for Docker/Railway (IPv4)
+  server.listen(port, '0.0.0.0', () => {
+    console.log(`[Server] HTTP server listening on 0.0.0.0:${port}`);
     console.log(`> Ready on http://0.0.0.0:${port}`);
   });
 });

@@ -1,6 +1,5 @@
-[build]
-builder = "dockerfile"
-dockerfilePath = "Dockerfile"
+# Railway configuration
+# Let Railway use Nixpacks (auto-detection) but configure via nixpacks.toml
 
 [deploy]
 healthcheckPath = "/api/health"

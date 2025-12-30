@@ -31,6 +31,8 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: List[str] = [
         "http://localhost:3000",
         "http://localhost:3001",
+        "https://ath-lawsphere-production.up.railway.app",
+        "https://*.railway.app",
     ]
     
     # Database (Docker PostgreSQL with pgvector)
@@ -53,11 +55,17 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     ANTHROPIC_API_KEY: str = ""
     GOOGLE_API_KEY: str = ""
+    GROQ_API_KEY: str = ""  # Free tier available! Hosts Llama 3, Mixtral
+    TOGETHER_API_KEY: str = ""  # Alternative open-source model provider
     
-    # Local LLM (Ollama)
+    # Local LLM (Ollama) - for local development only
     OLLAMA_ENABLED: bool = False
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     OLLAMA_MODEL: str = "qwen2"
+    
+    # Open-source model provider for production (Groq is free & fast)
+    OPENSOURCE_PROVIDER: str = "groq"  # "groq", "together", or "ollama"
+    OPENSOURCE_MODEL: str = "llama-3.1-8b-instant"  # Fast & free on Groq
     
     # Default Model (gpt-5-mini, gpt-4o, gemini-flash, gpt-4o, claude-3-sonnet, etc.)
     # If OLLAMA_ENABLED=true, will use OLLAMA_MODEL instead

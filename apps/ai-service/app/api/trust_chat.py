@@ -18,7 +18,8 @@ from app.agents.legal_assistant import LegalAssistantAgent
 from app.agents.langgraph_agent import LangGraphLegalAgent, create_legal_agent
 from app.models.llm_router import LLMRouter, ModelType
 from app.models.ollama_client import get_ollama_client, get_ollama_model_name
-from app.routing import TrustRouter, AuditLogger, RoutingDecision
+from app.models.groq_client import get_groq_client, GROQ_MODELS
+from app.routing import TrustRouter, AuditLogger, RoutingDecision, ModelProvider
 from app.config import settings
 from app.db import get_db
 from app.services import session_store
@@ -44,6 +45,9 @@ audit_logger = AuditLogger(
 
 # Ollama client for local inference
 ollama_client = get_ollama_client()
+
+# Groq client for open-source model inference (FREE tier!)
+groq_client = get_groq_client()
 
 # LangGraph agent instance (initialized lazily)
 _langgraph_agent: Optional[LangGraphLegalAgent] = None
@@ -319,8 +323,99 @@ async def create_trust_chat_completion(request: TrustChatRequest, db: AsyncSessi
             logger.info("standard_inference_path", is_local=routing_result.is_local, model_id=model_id)
             print(f"[TRUST_CHAT] Standard inference path - is_local: {routing_result.is_local}, model_id: {model_id}")
             
-            if routing_result.is_local:
-                # Use LOCAL model via Ollama
+            # Check if this is an open-source model (Groq)
+            selected_provider = routing_result.selected_model.provider
+            is_opensource = selected_provider == ModelProvider.OPENSOURCE
+            
+            if is_opensource:
+                # ============================================================
+                # OPENSOURCE PATH: Use Groq (FREE hosted open-source models)
+                # ============================================================
+                logger.info(
+                    "using_opensource_model",
+                    model=model_id,
+                    provider="groq",
+                    reason="Open-source model selected"
+                )
+                print(f"[TRUST_CHAT] Using OPENSOURCE model via Groq: {model_id}")
+                
+                try:
+                    if not groq_client.is_available:
+                        raise ValueError("Groq API key not configured")
+                    
+                    # Prepare messages for Groq
+                    groq_messages = [
+                        {"role": m.role.value, "content": m.content}
+                        for m in request.messages
+                    ]
+                    
+                    # Add system prompt for legal context
+                    if not any(m["role"] == "system" for m in groq_messages):
+                        groq_messages.insert(0, {
+                            "role": "system",
+                            "content": """You are an expert Indian legal AI assistant. 
+You help with legal queries, document analysis, and legal research.
+Be accurate, cite relevant laws and sections when applicable.
+Maintain attorney-client privilege and confidentiality.
+You are powered by an open-source LLM for privacy."""
+                        })
+                    
+                    # Call Groq with the selected model
+                    logger.info("calling_groq", model=model_id, num_messages=len(groq_messages))
+                    print(f"[TRUST_CHAT] Calling Groq with model: {model_id}, messages: {len(groq_messages)}")
+                    
+                    groq_response = await groq_client.chat_completion(
+                        messages=groq_messages,
+                        model=model_id,
+                        temperature=request.temperature,
+                        max_tokens=request.max_tokens or 4096
+                    )
+                    
+                    response_content = groq_response.get("content", "")
+                    print(f"[TRUST_CHAT] Groq response received - content_length: {len(response_content)}")
+                    logger.info(
+                        "opensource_inference_complete",
+                        model=model_id,
+                        content_length=len(response_content),
+                        tokens=groq_response.get("usage", {}).get("total_tokens", 0)
+                    )
+                    
+                except Exception as e:
+                    logger.error("groq_inference_failed", error=str(e))
+                    print(f"[TRUST_CHAT] Groq failed: {e}")
+                    
+                    # Fallback to cloud for non-sensitive content
+                    if not request.force_local and not routing_result.privacy_scan.force_local:
+                        logger.warning("groq_failed_fallback_to_cloud", error=str(e))
+                        try:
+                            llm_router = LLMRouter()
+                            model_type = ModelType(settings.DEFAULT_MODEL)
+                            llm = llm_router.get_model(model_type)
+                            agent_fallback = LegalAssistantAgent(llm=llm)
+                            
+                            cloud_response = await agent_fallback.process(
+                                messages=[{"role": m.role.value, "content": m.content} for m in request.messages],
+                                session_id=request.session_id,
+                            )
+                            response_content = cloud_response.get("content", "")
+                            routing_result.is_local = False
+                            routing_result.trust_message = "⚠️ Open-source unavailable - using cloud fallback"
+                        except Exception as cloud_error:
+                            logger.error("cloud_fallback_also_failed", error=str(cloud_error))
+                            raise HTTPException(
+                                status_code=500,
+                                detail=f"Both Groq and cloud inference failed: {str(e)}"
+                            )
+                    else:
+                        raise HTTPException(
+                            status_code=503,
+                            detail=f"Open-source inference required but Groq failed: {str(e)}"
+                        )
+            
+            elif routing_result.is_local:
+                # ============================================================
+                # LOCAL PATH: Try Ollama first, then Groq as fallback
+                # ============================================================
                 logger.info(
                     "using_local_model",
                     model=model_id,
@@ -376,36 +471,94 @@ Maintain attorney-client privilege and confidentiality."""
                             tokens_per_sec=ollama_response.tokens_per_second
                         )
                     else:
-                        # Ollama not available, fall back to cloud with warning
-                        logger.warning("ollama_unavailable_fallback_to_cloud")
+                        # Ollama not available, try Groq as open-source fallback
+                        logger.warning("ollama_unavailable_trying_groq")
+                        print("[TRUST_CHAT] Ollama unavailable, trying Groq fallback...")
                         
-                        # Only fall back if not force_local and content is not too sensitive
-                        if request.force_local or routing_result.privacy_scan.force_local:
-                            raise HTTPException(
-                                status_code=503,
-                                detail="Local inference required but Ollama is unavailable. Cannot process sensitive data via cloud."
+                        if groq_client.is_available:
+                            # Use Groq with open-source model
+                            groq_messages = [
+                                {"role": m.role.value, "content": m.content}
+                                for m in request.messages
+                            ]
+                            if not any(m["role"] == "system" for m in groq_messages):
+                                groq_messages.insert(0, {
+                                    "role": "system",
+                                    "content": """You are an expert Indian legal AI assistant. 
+You help with legal queries, document analysis, and legal research.
+Be accurate, cite relevant laws and sections when applicable.
+Maintain attorney-client privilege and confidentiality."""
+                                })
+                            
+                            # Use llama-3.1-8b-instant as fast fallback
+                            groq_model = "llama-3.1-8b-instant"
+                            groq_response = await groq_client.chat_completion(
+                                messages=groq_messages,
+                                model=groq_model,
+                                temperature=request.temperature,
+                                max_tokens=request.max_tokens or 4096
                             )
-                        
-                        # Use cloud as fallback for non-sensitive content
-                        llm_router = LLMRouter()
-                        model_type = ModelType(settings.DEFAULT_MODEL)
-                        llm = llm_router.get_model(model_type)
-                        agent_fallback = LegalAssistantAgent(llm=llm)
-                        
-                        cloud_response = await agent_fallback.process(
-                            messages=[{"role": m.role.value, "content": m.content} for m in request.messages],
-                            session_id=request.session_id,
-                        )
-                        response_content = cloud_response.get("content", "")
+                            response_content = groq_response.get("content", "")
+                            routing_result.trust_message = "🔵 Using open-source model (Groq) - Ollama unavailable"
+                            print(f"[TRUST_CHAT] Groq fallback successful - content_length: {len(response_content)}")
+                        else:
+                            # No local options, check if cloud fallback is allowed
+                            if request.force_local or routing_result.privacy_scan.force_local:
+                                raise HTTPException(
+                                    status_code=503,
+                                    detail="Local inference required but both Ollama and Groq are unavailable. Cannot process sensitive data via cloud."
+                                )
+                            
+                            # Use cloud as last resort
+                            logger.warning("no_local_options_fallback_to_cloud")
+                            llm_router = LLMRouter()
+                            model_type = ModelType(settings.DEFAULT_MODEL)
+                            llm = llm_router.get_model(model_type)
+                            agent_fallback = LegalAssistantAgent(llm=llm)
+                            
+                            cloud_response = await agent_fallback.process(
+                                messages=[{"role": m.role.value, "content": m.content} for m in request.messages],
+                                session_id=request.session_id,
+                            )
+                            response_content = cloud_response.get("content", "")
+                            routing_result.is_local = False
+                            routing_result.trust_message = "⚠️ Local unavailable - using cloud fallback (no sensitive data detected)"
                         
                 except HTTPException:
                     raise
                 except Exception as e:
                     logger.error("local_inference_failed", error=str(e))
+                    print(f"[TRUST_CHAT] Local inference failed: {e}")
                     
-                    # Fallback to cloud for non-sensitive content when Ollama fails
-                    if not request.force_local and not routing_result.privacy_scan.force_local:
-                        logger.warning("ollama_failed_fallback_to_cloud", error=str(e))
+                    # Try Groq as fallback before cloud
+                    if groq_client.is_available:
+                        logger.warning("ollama_failed_trying_groq", error=str(e))
+                        try:
+                            groq_messages = [
+                                {"role": m.role.value, "content": m.content}
+                                for m in request.messages
+                            ]
+                            if not any(m["role"] == "system" for m in groq_messages):
+                                groq_messages.insert(0, {
+                                    "role": "system",
+                                    "content": """You are an expert Indian legal AI assistant."""
+                                })
+                            
+                            groq_response = await groq_client.chat_completion(
+                                messages=groq_messages,
+                                model="llama-3.1-8b-instant",
+                                temperature=request.temperature,
+                                max_tokens=request.max_tokens or 4096
+                            )
+                            response_content = groq_response.get("content", "")
+                            routing_result.trust_message = "🔵 Using open-source model (Groq) - local inference failed"
+                        except Exception as groq_error:
+                            logger.error("groq_fallback_failed", error=str(groq_error))
+                            # Continue to cloud fallback below
+                    
+                    # Fallback to cloud for non-sensitive content when both Ollama and Groq fail
+                    if not response_content and not request.force_local and not routing_result.privacy_scan.force_local:
+                        logger.warning("all_local_failed_fallback_to_cloud", error=str(e))
                         try:
                             llm_router = LLMRouter()
                             model_type = ModelType(settings.DEFAULT_MODEL)

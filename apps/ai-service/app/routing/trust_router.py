@@ -15,12 +15,15 @@ from .privacy_scanner import PrivacyScanner, ScanResult, SensitivityLevel
 
 # Ollama base URL from environment (for Docker support)
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+# Groq is a FREE hosted open-source LLM provider (no GPU needed!)
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 
 
 class ModelProvider(Enum):
     """Model provider classification"""
-    LOCAL = "local"          # On-premise, air-gapped
-    CLOUD = "cloud"          # External API
+    LOCAL = "local"          # On-premise (Ollama) - dev only
+    OPENSOURCE = "opensource"  # Hosted open-source (Groq) - free!
+    CLOUD = "cloud"          # Proprietary API (OpenAI, etc)
 
 
 class RoutingDecision(Enum):
@@ -131,6 +134,42 @@ class TrustRouter:
             priority=3
         ),
         
+        # OPENSOURCE MODELS via Groq (FREE tier! Works in production)
+        # These run on Groq's infrastructure but use open-source models
+        "groq-llama-8b": ModelConfig(
+            model_id="llama-3.1-8b-instant",
+            display_name="Llama 3.1 8B (Groq - Free)",
+            provider=ModelProvider.OPENSOURCE,
+            api_key_env="GROQ_API_KEY",
+            cost_per_1k_tokens=0.0,  # FREE tier!
+            latency_ms_avg=100,  # Groq is VERY fast
+            context_window=131072,
+            capabilities=["legal", "quick_query", "analysis", "indian_law"],
+            priority=1
+        ),
+        "groq-llama-70b": ModelConfig(
+            model_id="llama-3.3-70b-versatile",
+            display_name="Llama 3.3 70B (Groq - Free)",
+            provider=ModelProvider.OPENSOURCE,
+            api_key_env="GROQ_API_KEY",
+            cost_per_1k_tokens=0.0,  # FREE tier!
+            latency_ms_avg=200,
+            context_window=131072,
+            capabilities=["legal", "complex_analysis", "reasoning", "indian_law"],
+            priority=2
+        ),
+        "groq-mixtral": ModelConfig(
+            model_id="mixtral-8x7b-32768",
+            display_name="Mixtral 8x7B (Groq - Free)",
+            provider=ModelProvider.OPENSOURCE,
+            api_key_env="GROQ_API_KEY",
+            cost_per_1k_tokens=0.0,  # FREE tier!
+            latency_ms_avg=150,
+            context_window=32768,
+            capabilities=["legal", "summarization", "analysis"],
+            priority=3
+        ),
+        
         # CLOUD MODELS (Only for non-sensitive, generic queries)
         "gemini-flash": ModelConfig(
             model_id="gemini-2.0-flash-exp",
@@ -222,13 +261,18 @@ class TrustRouter:
     LOCAL_MODELS_SIMPLE = ["qwen2.5-14b", "qwen2.5-7b", "llama3.1-8b"]
     LOCAL_MODELS_COMPLEX = ["qwen2.5-14b", "qwen2.5-7b", "llama3.1-8b"]
     
+    # Open-source models via Groq (use when Ollama isn't available - production)
+    GROQ_MODELS_SIMPLE = ["groq-llama-8b", "groq-mixtral"]
+    GROQ_MODELS_COMPLEX = ["groq-llama-70b", "groq-llama-8b"]
+    
     def __init__(
         self,
         enable_cloud: bool = True,
         default_local_model: str = "qwen2.5-14b",
         default_cloud_model: str = "gemini-flash",
         cost_optimization: bool = True,
-        prefer_local: bool = True  # NEW: Prefer local models first
+        prefer_local: bool = True,  # Prefer local/opensource models first
+        use_groq_fallback: bool = True,  # Use Groq when Ollama unavailable
     ):
         self.privacy_scanner = PrivacyScanner()
         self.enable_cloud = enable_cloud
@@ -236,6 +280,7 @@ class TrustRouter:
         self.default_cloud_model = default_cloud_model
         self.cost_optimization = cost_optimization
         self.prefer_local = prefer_local
+        self.use_groq_fallback = use_groq_fallback and bool(GROQ_API_KEY)
         self._request_counter = 0
     
     def analyze_complexity(self, content: str) -> str:
@@ -269,19 +314,39 @@ class TrustRouter:
         return "moderate"
     
     def select_local_model(self, complexity: str) -> ModelConfig:
-        """Select best local model based on complexity."""
+        """
+        Select best local/opensource model based on complexity.
+        
+        Priority:
+        1. Ollama (truly local) - for development with GPU
+        2. Groq (hosted open-source) - for production, FREE tier
+        """
+        # First try Ollama (local)
         if complexity == "simple":
-            # Use fastest local model for simple queries
-            for model_id in self.LOCAL_MODELS_SIMPLE:
-                if model_id in self.MODELS:
-                    return self.MODELS[model_id]
+            model_list = self.LOCAL_MODELS_SIMPLE
         else:
-            # Use most capable local model for moderate/complex
-            for model_id in self.LOCAL_MODELS_COMPLEX:
+            model_list = self.LOCAL_MODELS_COMPLEX
+            
+        for model_id in model_list:
+            if model_id in self.MODELS:
+                # Check if Ollama is available (only in dev/local)
+                model = self.MODELS[model_id]
+                if model.provider == ModelProvider.LOCAL:
+                    # TODO: Could ping Ollama to check availability
+                    # For now, use Groq fallback in production
+                    import os
+                    if os.getenv("OLLAMA_ENABLED", "false").lower() == "true":
+                        return model
+        
+        # Fallback to Groq (hosted open-source) if available
+        if self.use_groq_fallback:
+            groq_list = self.GROQ_MODELS_COMPLEX if complexity != "simple" else self.GROQ_MODELS_SIMPLE
+            for model_id in groq_list:
                 if model_id in self.MODELS:
                     return self.MODELS[model_id]
         
-        return self.MODELS[self.default_local_model]
+        # Final fallback: cheapest cloud model
+        return self.MODELS[self.CLOUD_MODELS_BY_COST[0]]
     
     def select_cloud_model(self, complexity: str) -> ModelConfig:
         """Select cloud model based on complexity and cost optimization."""
@@ -399,10 +464,13 @@ class TrustRouter:
         
         # Step 6: Generate trust information
         is_local = model.provider == ModelProvider.LOCAL
+        is_opensource = model.provider == ModelProvider.OPENSOURCE
         
         # Badge reflects ACTUAL model used, not just what's allowed
         if is_local:
             trust_badge = "🏠 LOCAL"
+        elif is_opensource:
+            trust_badge = "🔓 OPEN-SOURCE"  # Open-source = transparent, no proprietary data sharing
         else:
             trust_badge = "☁️ CLOUD"
         

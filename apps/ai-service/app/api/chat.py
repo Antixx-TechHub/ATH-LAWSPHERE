@@ -221,5 +221,36 @@ async def list_models():
                 "cost_per_1k_output": 0.0005,
                 "capabilities": ["chat", "analysis", "multimodal"],
             },
+            # === OPEN-SOURCE MODELS (Groq - FREE tier!) ===
+            {
+                "id": "llama-3.1-8b-instant",
+                "name": "Llama 3.1 8B Instant",
+                "provider": "groq",
+                "context_window": 131072,
+                "cost_per_1k_input": 0.0,  # FREE!
+                "cost_per_1k_output": 0.0,  # FREE!
+                "capabilities": ["chat", "legal", "fast", "opensource"],
+                "is_opensource": True,
+            },
+            {
+                "id": "llama-3.3-70b-versatile",
+                "name": "Llama 3.3 70B Versatile",
+                "provider": "groq",
+                "context_window": 131072,
+                "cost_per_1k_input": 0.0,  # FREE!
+                "cost_per_1k_output": 0.0,  # FREE!
+                "capabilities": ["chat", "legal", "analysis", "reasoning", "opensource"],
+                "is_opensource": True,
+            },
+            {
+                "id": "mixtral-8x7b-32768",
+                "name": "Mixtral 8x7B",
+                "provider": "groq",
+                "context_window": 32768,
+                "cost_per_1k_input": 0.0,  # FREE!
+                "cost_per_1k_output": 0.0,  # FREE!
+                "capabilities": ["chat", "legal", "summarization", "opensource"],
+                "is_opensource": True,
+            },
         ]
     }

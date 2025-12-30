@@ -1,9 +1,8 @@
 # Railway configuration
-# Build from apps/web with its own Dockerfile
+# Using Nixpacks for more reliable builds
 
 [build]
-builder = "dockerfile"
-dockerfilePath = "apps/web/Dockerfile"
+builder = "nixpacks"
 watchPatterns = ["apps/web/**"]
 
 [deploy]

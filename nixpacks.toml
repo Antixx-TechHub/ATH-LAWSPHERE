@@ -1,5 +1,17 @@
-# Nixpacks configuration for Railway - Monorepo setup
-# Only override the start command to bypass turbo
+# Nixpacks configuration for Railway
+# Builds the web app from monorepo
+
+[phases.setup]
+nixPkgs = ["nodejs_20", "openssl"]
+
+[phases.install]
+cmds = ["cd apps/web && npm install"]
+
+[phases.build]
+cmds = [
+    "cd apps/web && npx prisma generate",
+    "cd apps/web && npm run build"
+]
 
 [start]
 cmd = "cd apps/web && node server.js"

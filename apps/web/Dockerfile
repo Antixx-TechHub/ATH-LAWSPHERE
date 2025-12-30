@@ -1,6 +1,7 @@
 # Dockerfile for apps/web
 # Build context is apps/web (Railway Root Directory setting)
 # All COPY paths are relative to apps/web/
+# Cache bust: 2025-12-30-v2
 
 FROM node:20-slim AS builder
 WORKDIR /app

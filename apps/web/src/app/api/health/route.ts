@@ -17,6 +17,8 @@ export async function GET() {
       PGHOST_SET: !!process.env.PGHOST,
       PGUSER_SET: !!process.env.PGUSER,
       NEXTAUTH_URL: process.env.NEXTAUTH_URL || "not set",
+      // Show all env var keys (not values) for debugging
+      ALL_ENV_KEYS: Object.keys(process.env).filter(k => !k.includes('SECRET') && !k.includes('PASSWORD') && !k.includes('KEY')).slice(0, 30),
     }
   };
 

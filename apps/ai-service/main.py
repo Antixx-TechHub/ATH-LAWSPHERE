@@ -101,6 +101,12 @@ app.include_router(files.router, prefix="/api/files", tags=["Files"])
 app.include_router(search.router, prefix="/api/search", tags=["Search"])
 
 
+@app.get("/_health")
+async def railway_health():
+    """Railway health check endpoint."""
+    return {"status": "healthy"}
+
+
 @app.get("/")
 async def root():
     """Root endpoint."""

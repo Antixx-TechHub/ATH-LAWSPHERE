@@ -1,6 +1,6 @@
 # Dockerfile for apps/web
-# Build context is REPO ROOT, this file is at apps/web/Dockerfile
-# Paths must be relative to repo root!
+# Build context is apps/web (Railway Root Directory setting)
+# All COPY paths are relative to apps/web/
 
 FROM node:20-slim AS builder
 WORKDIR /app
@@ -8,17 +8,17 @@ WORKDIR /app
 # Install OpenSSL for Prisma
 RUN apt-get update && apt-get install -y openssl libssl-dev ca-certificates && rm -rf /var/lib/apt/lists/*
 
-# Copy package files from apps/web (paths relative to repo root)
-COPY apps/web/package.json ./
+# Copy package files (relative to apps/web)
+COPY package.json ./
 
 # Copy prisma schema BEFORE npm install (for postinstall hook)
-COPY apps/web/prisma ./prisma/
+COPY prisma ./prisma/
 
 # Install dependencies
 RUN npm install
 
-# Copy all source files from apps/web
-COPY apps/web/ .
+# Copy all source files
+COPY . .
 
 # Generate Prisma client and build Next.js
 RUN npx prisma generate
@@ -48,15 +48,9 @@ RUN echo "=== Validating build ===" && \
     test -f /app/.next/build-manifest.json && \
     echo "=== Build OK ==="
 
-EXPOSE 8080
-
-# Start with custom server
-CMD ["node", "server.js"]
-EXPOSE 8080
-
 # Default port (Railway overrides this)
 ENV PORT=8080
+EXPOSE 8080
 
-# Run directly without shell script to simplify debugging
+# Run with custom server
 CMD ["node", "server.js"]
-# Cache bust Tue, Dec 30, 2025  9:41:30 PM

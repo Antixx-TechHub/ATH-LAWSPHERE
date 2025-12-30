@@ -7,12 +7,18 @@ WORKDIR /app
 # Install OpenSSL for Prisma
 RUN apt-get update && apt-get install -y openssl libssl-dev ca-certificates && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies for the monorepo
+# Copy root package files first
 COPY package.json package-lock.json* ./
-COPY apps/web/package.json ./apps/web/
+
+# Create apps/web directory and copy its package.json
+RUN mkdir -p apps/web
+COPY apps/web/package.json ./apps/web/package.json
 
 # Copy prisma schema BEFORE npm ci so postinstall can find it
-COPY apps/web/prisma ./apps/web/prisma
+# Using explicit file paths to avoid cache issues
+RUN mkdir -p apps/web/prisma/migrations
+COPY apps/web/prisma/schema.prisma ./apps/web/prisma/
+COPY apps/web/prisma/migrations ./apps/web/prisma/migrations/
 
 RUN npm ci
 

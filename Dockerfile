@@ -51,9 +51,17 @@ COPY --from=builder /app/apps/web/next.config.js ./next.config.js
 # Copy node_modules (needed for custom server.js and runtime)
 COPY --from=builder /app/node_modules ./node_modules
 
-EXPOSE 3000
+# Validate build output exists
+RUN echo "=== Validating build ===" && \
+    ls -la /app/.next/ | head -10 && \
+    test -f /app/.next/build-manifest.json && \
+    echo "=== Build validated ==="
 
-ENV PORT=3000
+# Railway typically uses port 8080
+EXPOSE 8080
+
+# Railway will set PORT env var (usually 8080)
+ENV PORT=8080
 
 # Start the custom server directly
 CMD ["node", "server.js"]

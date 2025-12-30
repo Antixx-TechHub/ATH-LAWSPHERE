@@ -33,10 +33,21 @@ COPY --from=builder /app/apps/web/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
+# Create startup script that logs environment variables
+RUN echo '#!/bin/sh' > /app/start.sh && \
+    echo 'echo "=== Environment Variables Debug ===" ' >> /app/start.sh && \
+    echo 'echo "DATABASE_URL set: $(test -n \"$DATABASE_URL\" && echo YES || echo NO)"' >> /app/start.sh && \
+    echo 'echo "PGHOST: $PGHOST"' >> /app/start.sh && \
+    echo 'echo "NODE_ENV: $NODE_ENV"' >> /app/start.sh && \
+    echo 'echo "All env vars: $(env | grep -v SECRET | grep -v PASSWORD | grep -v KEY | head -20)"' >> /app/start.sh && \
+    echo 'echo "===================================" ' >> /app/start.sh && \
+    echo 'exec node server.js' >> /app/start.sh && \
+    chmod +x /app/start.sh
+
 EXPOSE 3000
 
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
 # Start the server - environment variables are injected at runtime by Railway
-CMD ["node", "server.js"]
+CMD ["/app/start.sh"]

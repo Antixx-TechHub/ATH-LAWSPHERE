@@ -57,11 +57,13 @@ RUN echo "=== Validating build ===" && \
     test -f /app/.next/build-manifest.json && \
     echo "=== Build validated ==="
 
-# Railway typically uses port 8080
+# Railway uses PORT env var - don't set a default, let Railway control it
+# EXPOSE is informational only
+EXPOSE 3000
 EXPOSE 8080
 
-# Railway will set PORT env var (usually 8080)
-ENV PORT=8080
+# Don't set PORT - let Railway inject it
+# ENV PORT=8080
 
 # Start the custom server directly
 CMD ["node", "server.js"]

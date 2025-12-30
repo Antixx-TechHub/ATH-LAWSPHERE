@@ -16,6 +16,7 @@ export async function GET(
   const url = `${AI_SERVICE_URL}/api/chat/trust/${path}`;
   
   console.log('[API Proxy] GET chat/trust:', url);
+  console.log('[API Proxy] AI_SERVICE_URL:', AI_SERVICE_URL);
   
   try {
     const response = await fetch(url, {
@@ -24,12 +25,24 @@ export async function GET(
       },
     });
     
-    const data = await response.json();
-    return NextResponse.json(data, { status: response.status });
+    const text = await response.text();
+    console.log('[API Proxy] Response status:', response.status, 'body preview:', text.substring(0, 100));
+    
+    // Try to parse as JSON
+    try {
+      const data = JSON.parse(text);
+      return NextResponse.json(data, { status: response.status });
+    } catch {
+      // Not JSON, return error with details
+      return NextResponse.json(
+        { error: 'AI service error', status: response.status, details: text },
+        { status: response.status >= 400 ? response.status : 502 }
+      );
+    }
   } catch (error) {
     console.error('[API Proxy] Trust error:', error);
     return NextResponse.json(
-      { error: 'AI service unavailable', details: String(error) },
+      { error: 'AI service unavailable', details: String(error), url: AI_SERVICE_URL },
       { status: 503 }
     );
   }
@@ -48,6 +61,7 @@ export async function POST(
   const url = `${AI_SERVICE_URL}/api/chat/trust/${path}`;
   
   console.log('[API Proxy] POST chat/trust:', url);
+  console.log('[API Proxy] AI_SERVICE_URL:', AI_SERVICE_URL);
   
   try {
     const body = await request.json();
@@ -59,12 +73,24 @@ export async function POST(
       body: JSON.stringify(body),
     });
     
-    const data = await response.json();
-    return NextResponse.json(data, { status: response.status });
+    const text = await response.text();
+    console.log('[API Proxy] Response status:', response.status, 'body preview:', text.substring(0, 100));
+    
+    // Try to parse as JSON
+    try {
+      const data = JSON.parse(text);
+      return NextResponse.json(data, { status: response.status });
+    } catch {
+      // Not JSON, return error with details
+      return NextResponse.json(
+        { error: 'AI service error', status: response.status, details: text },
+        { status: response.status >= 400 ? response.status : 502 }
+      );
+    }
   } catch (error) {
     console.error('[API Proxy] Trust error:', error);
     return NextResponse.json(
-      { error: 'AI service unavailable', details: String(error) },
+      { error: 'AI service unavailable', details: String(error), url: AI_SERVICE_URL },
       { status: 503 }
     );
   }

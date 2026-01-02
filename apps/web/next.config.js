@@ -15,7 +15,12 @@ const nextConfig = {
     serverComponentsExternalPackages: ['@prisma/client', 'bcryptjs'],
   },
   images: {
-    domains: ['localhost', 'avatars.githubusercontent.com', 'lh3.googleusercontent.com'],
+    domains: [
+      'localhost',
+      'avatars.githubusercontent.com',
+      'lh3.googleusercontent.com',
+      'ath-lawsphere-production.up.railway.app',
+    ],
   },
   // IMPORTANT: Do NOT put DATABASE_URL, NEXTAUTH_URL, NEXTAUTH_SECRET in env config!
   // They get baked at build time. Server-side code can access them via process.env at runtime.

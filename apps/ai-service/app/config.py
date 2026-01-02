@@ -18,8 +18,8 @@ class Settings(BaseSettings):
     
     # Application
     APP_NAME: str = "lawsphere-ai-service"
-    APP_ENV: str = "development"
-    DEBUG: bool = True
+    APP_ENV: str = "development"  # Set to "production" in Railway
+    DEBUG: bool = False  # Override in development with DEBUG=true
     LOG_LEVEL: str = "INFO"
     
     # Server
@@ -27,15 +27,17 @@ class Settings(BaseSettings):
     PORT: int = 8000
     WORKERS: int = 4
     
-    # CORS
+    # CORS - Production domains
     ALLOWED_ORIGINS: List[str] = [
         "http://localhost:3000",
         "http://localhost:3001",
+        "http://127.0.0.1:3000",
         "https://ath-lawsphere-production.up.railway.app",
         "https://*.railway.app",
+        "https://*.up.railway.app",
     ]
     
-    # Database (Docker PostgreSQL with pgvector)
+    # Database (set via DATABASE_URL env var in production)
     DATABASE_URL: str = "postgresql+asyncpg://lawsphere:lawsphere_secret@localhost:5433/lawsphere"
     
     # Redis
@@ -51,11 +53,11 @@ class Settings(BaseSettings):
     S3_SECRET_KEY: str = ""
     S3_ENDPOINT: str = ""
     
-    # AI Providers
+    # AI Providers (set via environment variables)
     OPENAI_API_KEY: str = ""
     ANTHROPIC_API_KEY: str = ""
     GOOGLE_API_KEY: str = ""
-    GROQ_API_KEY: str = ""  # Free tier available! Hosts Llama 3, Mixtral
+    GROQ_API_KEY: str = ""  # Free tier available at groq.com - hosts Llama 3, Mixtral, Gemma
     TOGETHER_API_KEY: str = ""  # Alternative open-source model provider
     
     # Local LLM (Ollama) - for local development only

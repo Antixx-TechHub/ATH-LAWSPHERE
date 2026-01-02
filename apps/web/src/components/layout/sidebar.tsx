@@ -26,8 +26,7 @@ interface SidebarProps {
 const navItems = [
   { href: "/dashboard", label: "Home", icon: Home },
   { href: "/dashboard/chat", label: "Chat", icon: MessageSquare },
-  { href: "/dashboard/library", label: "Library", icon: Library },
-  { href: "/dashboard/files", label: "Files", icon: FileText },
+  { href: "/dashboard/files", label: "Library", icon: Library },
   { href: "/dashboard/notes", label: "Notes", icon: StickyNote },
   { href: "/dashboard/sessions", label: "Sessions", icon: Users },
 ];

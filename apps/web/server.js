@@ -58,16 +58,33 @@ app.prepare().then(() => {
       return;
     }
     
+    // Add security headers in production
+    if (!dev) {
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('X-Frame-Options', 'DENY');
+      res.setHeader('X-XSS-Protection', '1; mode=block');
+      res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    }
+    
     const parsedUrl = parse(req.url, true);
     handle(req, res, parsedUrl);
   });
 
   // Initialize Socket.IO
   const { Server } = require('socket.io');
+  
+  // Production CORS origins
+  const corsOrigins = dev 
+    ? ['http://localhost:3000', 'http://127.0.0.1:3000']
+    : [
+        process.env.NEXTAUTH_URL,
+        'https://ath-lawsphere-production.up.railway.app',
+      ].filter(Boolean);
+  
   const io = new Server(server, {
     path: '/api/socket',
     cors: {
-      origin: process.env.NEXTAUTH_URL || 'http://localhost:3000',
+      origin: corsOrigins,
       methods: ['GET', 'POST'],
       credentials: true,
     },

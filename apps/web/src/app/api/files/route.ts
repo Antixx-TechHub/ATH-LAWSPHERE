@@ -9,9 +9,17 @@ import { prisma } from '@/lib/prisma';
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { v4 as uuidv4 } from 'uuid';
+import { promises as fs } from 'fs';
+import path from 'path';
 
-// S3 Client configuration
-const s3Client = new S3Client({
+// Check if we should use local storage (for development)
+const USE_LOCAL_STORAGE = process.env.USE_LOCAL_STORAGE === 'true' || !process.env.S3_ENDPOINT;
+
+// Local storage directory (relative to project root)
+const LOCAL_STORAGE_DIR = path.join(process.cwd(), 'uploads');
+
+// S3 Client configuration (only used if not using local storage)
+const s3Client = USE_LOCAL_STORAGE ? null : new S3Client({
   endpoint: process.env.S3_ENDPOINT || 'http://localhost:9000',
   region: 'us-east-1',
   credentials: {
@@ -23,6 +31,15 @@ const s3Client = new S3Client({
 
 const BUCKET_NAME = process.env.S3_BUCKET || 'lawsphere-files';
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+
+// Helper function to ensure directory exists
+async function ensureDir(dir: string) {
+  try {
+    await fs.access(dir);
+  } catch {
+    await fs.mkdir(dir, { recursive: true });
+  }
+}
 
 const ALLOWED_TYPES = [
   'application/pdf',
@@ -77,31 +94,43 @@ export async function POST(request: NextRequest) {
     // Read file buffer
     const buffer = Buffer.from(await file.arrayBuffer());
 
-    // Upload to S3
-    await s3Client.send(
-      new PutObjectCommand({
-        Bucket: BUCKET_NAME,
-        Key: s3Key,
-        Body: buffer,
-        ContentType: file.type,
-        Metadata: {
-          originalName: file.name,
-          uploadedBy: session.user.id,
-        },
-      })
-    );
+    // Upload to storage (S3 or local filesystem)
+    if (USE_LOCAL_STORAGE) {
+      // Use local filesystem storage
+      const localPath = path.join(LOCAL_STORAGE_DIR, session.user.id);
+      await ensureDir(localPath);
+      const filePath = path.join(localPath, `${fileId}.${fileExtension}`);
+      await fs.writeFile(filePath, buffer);
+      console.log(`File saved locally: ${filePath}`);
+    } else {
+      // Use S3 storage
+      await s3Client!.send(
+        new PutObjectCommand({
+          Bucket: BUCKET_NAME,
+          Key: s3Key,
+          Body: buffer,
+          ContentType: file.type,
+          Metadata: {
+            originalName: file.name,
+            uploadedBy: session.user.id,
+          },
+        })
+      );
+    }
 
     // Create file record in database
     const fileRecord = await prisma.file.create({
       data: {
         id: fileId,
         userId: session.user.id,
-        matterId: matterId || undefined,
-        name: file.name,
-        type: file.type,
+        sessionId: matterId || undefined,
+        filename: file.name,
+        originalName: file.name,
+        mimeType: file.type,
         size: file.size,
-        path: s3Key,
-        status: 'pending',
+        url: USE_LOCAL_STORAGE ? `/api/files/download?id=${fileId}` : s3Key,
+        storageKey: s3Key,
+        status: 'PROCESSING',
       },
     });
 
@@ -126,8 +155,8 @@ export async function POST(request: NextRequest) {
       data: {
         userId: session.user.id,
         action: 'FILE_UPLOAD',
-        resource: 'File',
-        resourceId: fileId,
+        entity: 'File',
+        entityId: fileId,
         metadata: {
           fileName: file.name,
           fileType: file.type,
@@ -138,10 +167,11 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       id: fileId,
-      name: file.name,
-      type: file.type,
+      filename: file.name,
+      originalName: file.name,
+      mimeType: file.type,
       size: file.size,
-      status: 'pending',
+      status: 'PROCESSING',
     });
   } catch (error) {
     console.error('File upload error:', error);
@@ -173,26 +203,32 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'File not found' }, { status: 404 });
       }
 
-      // Generate signed URL for download
-      const command = new GetObjectCommand({
-        Bucket: BUCKET_NAME,
-        Key: file.path,
-      });
-      const signedUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
+      // Generate download URL (signed URL for S3 or local path)
+      let downloadUrl: string;
+      if (USE_LOCAL_STORAGE) {
+        // For local storage, use the API endpoint to serve files
+        downloadUrl = `/api/files/download?id=${file.id}`;
+      } else {
+        const command = new GetObjectCommand({
+          Bucket: BUCKET_NAME,
+          Key: file.storageKey,
+        });
+        downloadUrl = await getSignedUrl(s3Client!, command, { expiresIn: 3600 });
+      }
 
       return NextResponse.json({
         ...file,
-        downloadUrl: signedUrl,
+        downloadUrl,
       });
     }
 
     // List files
-    const where: { userId: string; matterId?: string } = {
+    const where: { userId: string; sessionId?: string } = {
       userId: session.user.id,
     };
 
     if (matterId) {
-      where.matterId = matterId;
+      where.sessionId = matterId;
     }
 
     const files = await prisma.file.findMany({
@@ -238,15 +274,26 @@ export async function DELETE(request: NextRequest) {
       where: { id: fileId },
     });
 
+    // Delete local file if using local storage
+    if (USE_LOCAL_STORAGE) {
+      try {
+        const relativePath = file.storageKey.replace('uploads/', '');
+        const localPath = path.join(LOCAL_STORAGE_DIR, relativePath);
+        await fs.unlink(localPath);
+      } catch (err) {
+        console.error('Failed to delete local file:', err);
+      }
+    }
+
     // Create audit log
     await prisma.auditLog.create({
       data: {
         userId: session.user.id,
         action: 'FILE_DELETE',
-        resource: 'File',
-        resourceId: fileId,
+        entity: 'File',
+        entityId: fileId,
         metadata: {
-          fileName: file.name,
+          fileName: file.filename,
         },
       },
     });

@@ -38,13 +38,13 @@ export function TopBar({ user }: TopBarProps) {
   const { theme, setTheme } = useTheme();
   const [notifications, setNotifications] = useState<number>(3);
 
-  const initials = user.name
+  const initials = user?.name
     ? user.name
         .split(" ")
         .map((n) => n[0])
         .join("")
         .toUpperCase()
-    : user.email[0].toUpperCase();
+    : (user?.email?.[0] || "U").toUpperCase();
 
   return (
     <header className="sticky top-0 z-30 h-12 bg-white/80 dark:bg-neutral-900/80 backdrop-blur-md border-b border-neutral-200 dark:border-neutral-800">
@@ -130,7 +130,7 @@ export function TopBar({ user }: TopBarProps) {
                 className="relative h-10 w-10 rounded-full"
               >
                 <Avatar>
-                  <AvatarImage src={user.image || undefined} alt={user.name || "User"} />
+                  <AvatarImage src={user?.image || undefined} alt={user?.name || "User"} />
                   <AvatarFallback className="bg-primary-100 text-primary-700">
                     {initials}
                   </AvatarFallback>
@@ -140,8 +140,8 @@ export function TopBar({ user }: TopBarProps) {
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium">{user.name || "User"}</p>
-                  <p className="text-xs text-muted-foreground">{user.email}</p>
+                  <p className="text-sm font-medium">{user?.name || "User"}</p>
+                  <p className="text-xs text-muted-foreground">{user?.email || ""}</p>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />

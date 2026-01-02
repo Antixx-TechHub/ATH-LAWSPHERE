@@ -31,6 +31,17 @@ yarn-error.log*
 .env*.local
 .env.development
 .env.production
+apps/web/.env
+apps/ai-service/.env
+
+# Uploaded files (local storage)
+apps/web/uploads/
+uploads/
+
+# SQLite databases
+*.db
+*.db-journal
+apps/ai-service/*.db
 
 # Vercel
 .vercel

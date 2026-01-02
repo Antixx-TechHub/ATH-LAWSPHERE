@@ -1,12 +1,12 @@
 @echo off
 echo ========================================
-echo Stopping Lawsphere Development Stack
+echo Stopping Lawsphere Production Stack
 echo ========================================
 
 cd /d "%~dp0.."
 
-docker compose -f docker-compose.dev.yml down
+docker compose -f docker-compose.prod.yml down
 
 echo.
-echo All development services stopped.
+echo All production services stopped.
 pause

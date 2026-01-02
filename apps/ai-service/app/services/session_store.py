@@ -137,6 +137,8 @@ async def add_file(
     is_sensitive: Optional[bool] = None,
     pii_detected: Optional[bool] = None,
     file_id: Optional[str] = None,
+    raw_content: Optional[bytes] = None,
+    extracted_text: Optional[str] = None,
 ) -> str:
     file_pk = file_id or str(uuid.uuid4())
     session.add(
@@ -150,6 +152,8 @@ async def add_file(
             is_sensitive=is_sensitive,
             pii_detected=pii_detected,
             uploaded_at=datetime.utcnow(),
+            raw_content=raw_content,
+            extracted_text=extracted_text,
         )
     )
     await session.flush()
@@ -290,3 +294,24 @@ async def delete_file(session: AsyncSession, file_id: str) -> bool:
     await session.delete(file)
     await session.flush()
     return True
+
+
+async def get_file(session: AsyncSession, file_id: str) -> Optional[dict]:
+    """Get a single file by ID."""
+    file = await session.get(SessionFile, file_id)
+    if not file:
+        return None
+    
+    return {
+        "id": file.id,
+        "session_id": file.session_id,
+        "name": file.name,
+        "mime_type": file.mime_type,
+        "size": file.size,
+        "status": file.status,
+        "uploaded_at": file.uploaded_at,
+        "is_sensitive": file.is_sensitive,
+        "pii_detected": file.pii_detected,
+        "extracted_text": file.extracted_text,
+        "raw_content": file.raw_content,
+    }

@@ -21,6 +21,8 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
     tesseract-ocr \
+    tesseract-ocr-eng \
+    libmagic1 \
     poppler-utils \
     && rm -rf /var/lib/apt/lists/*
 

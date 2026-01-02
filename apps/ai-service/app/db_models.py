@@ -50,6 +50,8 @@ class SessionFile(Base):
     uploaded_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     is_sensitive: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     pii_detected: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    extracted_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    raw_content: Mapped[bytes | None] = mapped_column(nullable=True)  # Store original file
 
     session: Mapped[ChatSession] = relationship(back_populates="files")
 

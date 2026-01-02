@@ -3,11 +3,19 @@ echo ========================================
 echo Starting Lawsphere Development Stack
 echo ========================================
 
-cd /d "%~dp0"
+cd /d "%~dp0.."
+
+REM Check if .env.local exists
+if not exist ".env.local" (
+    echo ERROR: .env.local not found!
+    echo Please copy .env.example to .env.local and configure your settings.
+    pause
+    exit /b 1
+)
 
 echo.
 echo [1/3] Starting infrastructure (Postgres, Redis)...
-docker compose -f docker-compose.dev.yml up -d postgres redis
+docker compose -f docker-compose.dev.yml --env-file .env.local up -d postgres redis
 
 echo.
 echo [2/3] Waiting for services to be healthy...
@@ -15,7 +23,7 @@ timeout /t 10
 
 echo.
 echo [3/3] Starting AI Service and Web App...
-docker compose -f docker-compose.dev.yml up -d ai-service web
+docker compose -f docker-compose.dev.yml --env-file .env.local up -d ai-service web
 
 echo.
 echo ========================================

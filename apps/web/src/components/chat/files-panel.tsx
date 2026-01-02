@@ -52,6 +52,8 @@ interface UploadedFile {
 export function FilesPanel({ sessionId, onFilesChanged, refreshSignal }: FilesPanelProps) {
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [viewingFile, setViewingFile] = useState<UploadedFile | null>(null);
+  const [fileContent, setFileContent] = useState<string>("");
 
   const refreshFiles = useCallback(async () => {
     if (!sessionId) return;
@@ -140,10 +142,13 @@ export function FilesPanel({ sessionId, onFilesChanged, refreshSignal }: FilesPa
       "application/pdf": [".pdf"],
       "application/msword": [".doc"],
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
-      "image/*": [".png", ".jpg", ".jpeg", ".gif", ".webp"],
+      "application/vnd.ms-excel": [".xls"],
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
+      "application/rtf": [".rtf"],
+      "image/*": [".png", ".jpg", ".jpeg", ".gif", ".webp", ".tiff", ".bmp"],
       "audio/*": [".mp3", ".wav", ".m4a"],
       "video/*": [".mp4", ".mov", ".avi"],
-      "text/*": [".txt", ".md"],
+      "text/*": [".txt", ".md", ".csv"],
     },
   });
 
@@ -258,11 +263,45 @@ export function FilesPanel({ sessionId, onFilesChanged, refreshSignal }: FilesPa
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={async () => {
+                          try {
+                            setViewingFile(file);
+                            const response = await fetch(`/api/files/${file.id}/content`);
+                            if (response.ok) {
+                              const data = await response.json();
+                              setFileContent(data.content || "No content available");
+                            } else {
+                              setFileContent("Failed to load file content");
+                            }
+                          } catch (err) {
+                            console.error('Failed to load file', err);
+                            setFileContent("Error loading file");
+                          }
+                        }}
+                      >
                         <Eye className="h-4 w-4 mr-2" />
                         Preview
                       </DropdownMenuItem>
-                      <DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={async () => {
+                          try {
+                            const response = await fetch(`/api/files/${file.id}/content`);
+                            if (response.ok) {
+                              const data = await response.json();
+                              const blob = new Blob([data.content || ""], { type: 'text/plain' });
+                              const url = URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              a.href = url;
+                              a.download = file.name;
+                              a.click();
+                              URL.revokeObjectURL(url);
+                            }
+                          } catch (err) {
+                            console.error('Failed to download', err);
+                          }
+                        }}
+                      >
                         <Download className="h-4 w-4 mr-2" />
                         Download
                       </DropdownMenuItem>
@@ -299,6 +338,113 @@ export function FilesPanel({ sessionId, onFilesChanged, refreshSignal }: FilesPa
           </div>
         )}
       </div>
+
+      {/* File Viewer Dialog */}
+      {viewingFile && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setViewingFile(null)}>
+          <div className="bg-white dark:bg-neutral-900 rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-neutral-200 dark:border-neutral-800">
+              <div className="flex items-center gap-3">
+                <FileText className="h-5 w-5 text-primary-600" />
+                <div>
+                  <h3 className="font-semibold">{viewingFile.name}</h3>
+                  <p className="text-xs text-neutral-500">{formatFileSize(viewingFile.size)}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={async () => {
+                    try {
+                      // For images, download the raw file
+                      if (viewingFile.type.startsWith('image/')) {
+                        const response = await fetch(`/api/files/${viewingFile.id}/raw`);
+                        if (response.ok) {
+                          const blob = await response.blob();
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = viewingFile.name;
+                          a.click();
+                          URL.revokeObjectURL(url);
+                        }
+                      } else {
+                        const response = await fetch(`/api/files/${viewingFile.id}/content`);
+                        if (response.ok) {
+                          const data = await response.json();
+                          const blob = new Blob([data.content || ""], { type: 'text/plain' });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = viewingFile.name;
+                          a.click();
+                          URL.revokeObjectURL(url);
+                        }
+                      }
+                    } catch (err) {
+                      console.error('Failed to download', err);
+                    }
+                  }}
+                >
+                  <Download className="h-4 w-4 mr-1" />
+                  Download
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => setViewingFile(null)}>
+                  <span className="text-xl">×</span>
+                </Button>
+              </div>
+            </div>
+            
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-4">
+              {/* Image Preview */}
+              {viewingFile.type.startsWith("image/") ? (
+                <div className="space-y-4">
+                  <div className="flex justify-center bg-neutral-100 dark:bg-neutral-800 rounded-lg p-4">
+                    <img 
+                      src={`/api/files/${viewingFile.id}/raw`}
+                      alt={viewingFile.name}
+                      className="max-w-full max-h-[50vh] object-contain rounded"
+                    />
+                  </div>
+                  {fileContent && !fileContent.startsWith("[") && (
+                    <div className="border-t border-neutral-200 dark:border-neutral-700 pt-4">
+                      <h4 className="text-sm font-medium mb-2 text-neutral-600 dark:text-neutral-400">
+                        📝 Extracted Text (OCR)
+                      </h4>
+                      <pre className="text-sm whitespace-pre-wrap font-mono bg-neutral-50 dark:bg-neutral-800 p-4 rounded">
+                        {fileContent}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <>
+                  {viewingFile.type === "application/pdf" && (
+                    <div className="mb-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                      <p className="text-sm text-amber-700 dark:text-amber-300">
+                        📄 PDF Preview: Showing extracted text content. Download for the full document.
+                      </p>
+                    </div>
+                  )}
+                  {fileContent ? (
+                    <pre className="text-sm whitespace-pre-wrap font-mono bg-neutral-50 dark:bg-neutral-800 p-4 rounded">
+                      {fileContent}
+                    </pre>
+                  ) : (
+                    <div className="flex items-center justify-center h-32 text-neutral-500">
+                      <Clock className="h-5 w-5 mr-2 animate-spin" />
+                      Loading content...
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

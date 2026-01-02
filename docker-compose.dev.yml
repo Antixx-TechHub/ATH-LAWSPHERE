@@ -56,10 +56,16 @@ services:
       REDIS_URL: redis://redis:6379
       # Ollama runs on host, use host.docker.internal
       OLLAMA_BASE_URL: http://host.docker.internal:11434
-      # Cloud API keys (optional for dev)
+      OLLAMA_ENABLED: "false"
+      # Cloud API keys - set via environment or .env.local
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      # Use Groq for open-source models
+      OPENSOURCE_PROVIDER: ${OPENSOURCE_PROVIDER:-groq}
+      OPENSOURCE_MODEL: ${OPENSOURCE_MODEL:-llama-3.1-8b-instant}
+      DEFAULT_MODEL: ${DEFAULT_MODEL:-llama-3.1-8b-instant}
       LANGCHAIN_TRACING_V2: "false"
     volumes:
       # Mount source code for hot-reload

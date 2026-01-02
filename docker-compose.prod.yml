@@ -46,17 +46,25 @@ services:
     container_name: lawsphere-ai-prod
     restart: always
     environment:
+      ENVIRONMENT: production
       DATABASE_URL: ${DATABASE_URL}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
-      NODE_ENV: production
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
-      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
-      LANGSMITH_API_KEY: ${LANGSMITH_API_KEY}
+      # LLM API Keys
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      # Open Source Model Configuration (Groq recommended for production)
+      OPENSOURCE_PROVIDER: ${OPENSOURCE_PROVIDER:-groq}
+      OPENSOURCE_MODEL: ${OPENSOURCE_MODEL:-llama-3.1-8b-instant}
+      DEFAULT_MODEL: ${DEFAULT_MODEL:-llama-3.1-8b-instant}
+      # Tracing
+      LANGSMITH_API_KEY: ${LANGSMITH_API_KEY:-}
       LANGCHAIN_TRACING_V2: ${LANGCHAIN_TRACING_V2:-false}
+      # Local LLM (optional)
       OLLAMA_ENABLED: ${OLLAMA_ENABLED:-false}
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5}
     depends_on:
       postgres:
         condition: service_healthy

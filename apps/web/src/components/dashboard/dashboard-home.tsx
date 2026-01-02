@@ -194,7 +194,7 @@ export function DashboardHome({ user }: DashboardHomeProps) {
                 {recentSessions.map((session) => (
                   <Link
                     key={session.id}
-                    href={`/dashboard/chat/${session.id}`}
+                    href={`/dashboard/chat?session=${session.id}`}
                   >
                     <div className="flex items-center justify-between p-3 rounded-md border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">
                       <div className="flex items-center gap-3">

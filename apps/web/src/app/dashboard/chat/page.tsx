@@ -94,7 +94,14 @@ export default function ChatPage() {
           await loadSessionData(sessionParam);
         } else {
           const created = await aiClient.createSession("New Session");
-          setSessionId(created.id);
+          console.log("[Chat] Created session:", created);
+          if (created && created.id) {
+            setSessionId(created.id);
+          } else {
+            // Fallback to local session if creation failed
+            console.warn("[Chat] Session creation returned invalid response, using local session");
+            setSessionId("local-" + Date.now());
+          }
         }
       } catch (err) {
         console.error("Unable to initialize session", err);
@@ -184,18 +191,29 @@ export default function ChatPage() {
             rightPanelOpen ? "w-2/3" : "w-full"
           )}
         >
-          {sessionId && <ChatPanel sessionId={sessionId} onSessionUpdate={() => loadSessionData(sessionId)} />}
+          {sessionId ? (
+            <ChatPanel sessionId={sessionId} onSessionUpdate={() => loadSessionData(sessionId)} />
+          ) : (
+            <div className="h-full flex items-center justify-center bg-white dark:bg-neutral-900 rounded-lg border border-neutral-200 dark:border-neutral-800">
+              <div className="text-center">
+                <p className="text-neutral-500 mb-2">Unable to load chat session</p>
+                <Button onClick={() => window.location.reload()} variant="outline" size="sm">
+                  Retry
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right Panel - Files/Notes */}
         {rightPanelOpen && (
           <div className="w-1/3 min-w-[300px]">
             {activePanel === "files" ? (
-              sessionId && <FilesPanel sessionId={sessionId} onFilesChanged={() => loadSessionData(sessionId)} refreshSignal={refreshSignal} />
+              sessionId ? <FilesPanel sessionId={sessionId} onFilesChanged={() => loadSessionData(sessionId)} refreshSignal={refreshSignal} /> : null
             ) : activePanel === "notes" ? (
-              sessionId && <NotesPanel sessionId={sessionId} />
+              sessionId ? <NotesPanel sessionId={sessionId} /> : null
             ) : (
-              sessionId && <SessionInfoPanel sessionId={sessionId} files={sessionFiles} chatFiles={chatFiles} />
+              sessionId ? <SessionInfoPanel sessionId={sessionId} files={sessionFiles} chatFiles={chatFiles} /> : null
             )}
           </div>
         )}

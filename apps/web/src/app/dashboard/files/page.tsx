@@ -38,14 +38,24 @@ export default function FilesPage() {
 
         if (response.ok) {
           const data = await response.json();
-          updateFile(fileId, {
-            id: data.id,
-            status: 'processing',
-            progress: 100,
-          });
-
-          // Poll for processing status
-          pollFileStatus(data.id, fileId);
+          
+          // Check if already READY (no processing needed)
+          if (data.status === 'READY') {
+            updateFile(fileId, {
+              id: data.id,
+              status: 'ready',
+              progress: 100,
+              url: data.url,
+            });
+          } else {
+            // Still processing, start polling
+            updateFile(fileId, {
+              id: data.id,
+              status: 'processing',
+              progress: 100,
+            });
+            pollFileStatus(data.id, fileId);
+          }
         } else {
           updateFile(fileId, {
             status: 'error',
@@ -73,10 +83,11 @@ export default function FilesPage() {
         if (response.ok) {
           const data = await response.json();
           
-          if (data.status === 'completed') {
-            updateFile(localId, { status: 'ready' });
+          // Check for READY status (from database) or completed (legacy)
+          if (data.status === 'READY' || data.status === 'completed') {
+            updateFile(localId, { status: 'ready', url: data.downloadUrl });
             return;
-          } else if (data.status === 'failed') {
+          } else if (data.status === 'ERROR' || data.status === 'failed') {
             updateFile(localId, { status: 'error', error: 'Processing failed' });
             return;
           }
@@ -213,16 +224,30 @@ export default function FilesPage() {
                           <p className="text-xs text-destructive mt-1">{file.error}</p>
                         )}
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeFile(file.id)}
-                        className="flex-shrink-0"
-                      >
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </Button>
+                      <div className="flex flex-col gap-1 flex-shrink-0">
+                        {file.status === 'ready' && file.url && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => window.open(file.url, '_blank')}
+                            title="Open file"
+                          >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeFile(file.id)}
+                          title="Remove file"
+                        >
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>

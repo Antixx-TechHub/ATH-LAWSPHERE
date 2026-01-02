@@ -130,25 +130,24 @@ export async function POST(request: NextRequest) {
         size: file.size,
         url: USE_LOCAL_STORAGE ? `/api/files/download?id=${fileId}` : s3Key,
         storageKey: s3Key,
-        status: 'PROCESSING',
+        status: 'READY',  // Set to READY immediately - processing is async
       },
     });
 
-    // Trigger AI service for processing
-    try {
-      await fetch(`${AI_SERVICE_URL}/api/files/process`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          file_id: fileId,
-          file_path: s3Key,
-          file_type: file.type,
-          user_id: session.user.id,
-        }),
-      });
-    } catch (err) {
+    // Trigger AI service for processing (async, non-blocking)
+    // This updates extractedText but status is already READY
+    fetch(`${AI_SERVICE_URL}/api/files/process`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        file_id: fileId,
+        file_path: s3Key,
+        file_type: file.type,
+        user_id: session.user.id,
+      }),
+    }).catch(err => {
       console.error('Failed to trigger file processing:', err);
-    }
+    });
 
     // Create audit log
     await prisma.auditLog.create({
@@ -171,7 +170,8 @@ export async function POST(request: NextRequest) {
       originalName: file.name,
       mimeType: file.type,
       size: file.size,
-      status: 'PROCESSING',
+      status: 'READY',
+      url: USE_LOCAL_STORAGE ? `/api/files/download?id=${fileId}` : s3Key,
     });
   } catch (error) {
     console.error('File upload error:', error);

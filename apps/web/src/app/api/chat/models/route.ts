@@ -4,6 +4,9 @@
 
 import { NextResponse } from 'next/server';
 
+// Force dynamic rendering - this route calls external AI service
+export const dynamic = 'force-dynamic';
+
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 
 export async function GET() {

@@ -1,39 +1,77 @@
 /**
- * File Operations Proxy - Delete file by ID
- * Proxies file operations from the browser to the AI service
+ * File Operations Route - Get/Delete file by ID
+ * Direct database operations instead of proxying to AI service
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-
-const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+import { promises as fs } from 'fs';
+import path from 'path';
 
 // Disable Next.js caching for this route
 export const dynamic = 'force-dynamic';
+
+const USE_LOCAL_STORAGE = process.env.USE_LOCAL_STORAGE === 'true' || !process.env.S3_ENDPOINT;
+const LOCAL_STORAGE_DIR = path.join(process.cwd(), 'uploads');
 
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { fileId: string } }
 ) {
   try {
-    const { fileId } = params;
-
-    // Forward to AI service
-    const response = await fetch(`${AI_SERVICE_URL}/api/files/${fileId}`, {
-      method: 'DELETE',
-    });
-
-    if (!response.ok) {
-      const error = await response.text();
-      return NextResponse.json(
-        { error: `AI service error: ${error}` },
-        { status: response.status }
-      );
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const data = await response.json();
-    return NextResponse.json(data);
+    const { fileId } = params;
+
+    // Get file from database
+    const file = await prisma.file.findUnique({
+      where: { id: fileId },
+    });
+
+    if (!file) {
+      return NextResponse.json({ error: 'File not found' }, { status: 404 });
+    }
+
+    // Check ownership
+    if (file.userId !== session.user.id) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
+
+    // Delete from database
+    await prisma.file.delete({
+      where: { id: fileId },
+    });
+
+    // Delete from local storage if applicable
+    if (USE_LOCAL_STORAGE) {
+      try {
+        const relativePath = file.storageKey.replace('uploads/', '');
+        const localPath = path.join(LOCAL_STORAGE_DIR, relativePath);
+        await fs.unlink(localPath);
+      } catch (err) {
+        console.error('Failed to delete local file:', err);
+      }
+    }
+
+    // Create audit log
+    await prisma.auditLog.create({
+      data: {
+        userId: session.user.id,
+        action: 'FILE_DELETE',
+        entity: 'File',
+        entityId: fileId,
+        metadata: { fileName: file.filename },
+      },
+    });
+
+    return NextResponse.json({ success: true, message: 'File deleted' });
   } catch (error) {
-    console.error('File delete proxy error:', error);
+    console.error('File delete error:', error);
     return NextResponse.json(
       { error: 'Failed to delete file' },
       { status: 500 }
@@ -46,26 +84,46 @@ export async function GET(
   { params }: { params: { fileId: string } }
 ) {
   try {
-    const { fileId } = params;
-
-    // Forward to AI service
-    const response = await fetch(`${AI_SERVICE_URL}/api/files/${fileId}`, {
-      method: 'GET',
-      cache: 'no-store',
-    });
-
-    if (!response.ok) {
-      const error = await response.text();
-      return NextResponse.json(
-        { error: `AI service error: ${error}` },
-        { status: response.status }
-      );
+    const session = await getServerSession(authOptions);
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const data = await response.json();
-    return NextResponse.json(data);
+    const { fileId } = params;
+
+    // Get file from database
+    const file = await prisma.file.findUnique({
+      where: { id: fileId },
+    });
+
+    if (!file) {
+      return NextResponse.json({ error: 'File not found' }, { status: 404 });
+    }
+
+    // Check ownership
+    if (file.userId !== session.user.id) {
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
+
+    // Generate download URL
+    const downloadUrl = USE_LOCAL_STORAGE
+      ? `/api/files/download?id=${file.id}`
+      : file.url;
+
+    return NextResponse.json({
+      id: file.id,
+      filename: file.filename,
+      originalName: file.originalName,
+      mimeType: file.mimeType,
+      size: file.size,
+      status: file.status,
+      url: file.url,
+      downloadUrl,
+      createdAt: file.createdAt,
+      updatedAt: file.updatedAt,
+    });
   } catch (error) {
-    console.error('File get proxy error:', error);
+    console.error('File get error:', error);
     return NextResponse.json(
       { error: 'Failed to get file' },
       { status: 500 }

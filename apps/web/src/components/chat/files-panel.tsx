@@ -145,7 +145,7 @@ export function FilesPanel({ sessionId, onFilesChanged, refreshSignal }: FilesPa
       "application/vnd.ms-excel": [".xls"],
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
       "application/rtf": [".rtf"],
-      "image/*": [".png", ".jpg", ".jpeg", ".gif", ".webp", ".tiff", ".bmp"],
+      "image/*": [".png", ".jpg", ".jpeg", ".gif", ".webp", ".tiff", ".bmp", ".svg"],
       "audio/*": [".mp3", ".wav", ".m4a"],
       "video/*": [".mp4", ".mov", ".avi"],
       "text/*": [".txt", ".md", ".csv"],

@@ -37,6 +37,7 @@ const ALLOWED_TYPES = [
   'image/webp',
   'image/tiff',
   'image/bmp',
+  'image/svg+xml',
   'audio/mpeg',
   'audio/wav',
   'audio/mp4',

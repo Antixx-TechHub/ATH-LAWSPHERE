@@ -178,6 +178,7 @@ export function ChatPanel({ sessionId, onSessionUpdate }: ChatPanelProps) {
         }
 
         const content = await file.text();
+        console.log('[Chat] File read - name:', file.name, 'content length:', content.length);
         
         // Limit content size for context window
         const maxChars = 50000;
@@ -186,13 +187,18 @@ export function ChatPanel({ sessionId, onSessionUpdate }: ChatPanelProps) {
           : content;
 
         const docId = `doc-${Date.now()}-${i}`;
+        console.log('[Chat] Storing document - id:', docId, 'truncatedContent length:', truncatedContent.length);
         
-        setAttachedDocs(prev => [...prev, {
-          id: docId,
-          name: file.name,
-          content: truncatedContent,
-          size: file.size,
-        }]);
+        setAttachedDocs(prev => {
+          const newDocs = [...prev, {
+            id: docId,
+            name: file.name,
+            content: truncatedContent,
+            size: file.size,
+          }];
+          console.log('[Chat] Updated attachedDocs count:', newDocs.length);
+          return newDocs;
+        });
 
         // Also upload the file to the session so it appears in the Files tab
         try {
@@ -277,6 +283,9 @@ export function ChatPanel({ sessionId, onSessionUpdate }: ChatPanelProps) {
     try {
       // Build message content - include document context if attached
       let userContent = input;
+      console.log('[Chat] Attached docs count:', attachedDocs.length);
+      console.log('[Chat] Attached docs:', attachedDocs.map(d => ({ name: d.name, contentLen: d.content?.length || 0 })));
+      
       if (attachedDocs.length > 0) {
         const docsContent = attachedDocs
           .map(doc => `[ATTACHED DOCUMENT: ${doc.name}]
@@ -289,6 +298,8 @@ ${doc.content}
         userContent = `${docsContent}
 
 USER QUESTION: ${input}`;
+        console.log('[Chat] User content with docs - length:', userContent.length);
+        console.log('[Chat] User content preview:', userContent.substring(0, 500));
       }
 
       // Build previous messages for context

@@ -22,6 +22,16 @@ import path from 'path';
 // Storage mode detection
 type StorageMode = 's3' | 'database' | 'local';
 
+// Check if S3 endpoint is a real remote endpoint (not localhost/dev)
+function isValidS3Endpoint(endpoint: string | undefined): boolean {
+  if (!endpoint) return false;
+  // Ignore localhost endpoints - those are for local MinIO dev
+  if (endpoint.includes('localhost') || endpoint.includes('127.0.0.1')) {
+    return false;
+  }
+  return true;
+}
+
 function getStorageMode(): StorageMode {
   // Explicit mode from env
   const explicit = process.env.STORAGE_MODE as StorageMode;
@@ -29,8 +39,9 @@ function getStorageMode(): StorageMode {
     return explicit;
   }
   
-  // Auto-detect: S3 if configured, otherwise database (works on Railway)
-  if (process.env.S3_ENDPOINT && process.env.S3_ACCESS_KEY && process.env.S3_SECRET_KEY) {
+  // Auto-detect: S3 if configured with a real remote endpoint
+  const s3Endpoint = process.env.S3_ENDPOINT;
+  if (isValidS3Endpoint(s3Endpoint) && process.env.S3_ACCESS_KEY && process.env.S3_SECRET_KEY) {
     return 's3';
   }
   

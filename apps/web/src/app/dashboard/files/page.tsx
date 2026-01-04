@@ -137,24 +137,24 @@ export default function FilesPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        {/* Header */}
+      <div className="space-y-4 md:space-y-6 pb-16 md:pb-0">
+        {/* Header - Mobile Responsive */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-serif font-bold tracking-tight">Files</h1>
-            <p className="text-muted-foreground">
+            <h1 className="text-xl md:text-3xl font-serif font-bold tracking-tight">Files</h1>
+            <p className="text-sm text-muted-foreground hidden sm:block">
               Upload and manage your legal documents
             </p>
           </div>
         </div>
 
-        {/* Upload Zone */}
+        {/* Upload Zone - Mobile Responsive */}
         <Card>
           <CardContent className="p-0">
             <div
               {...getRootProps()}
               className={`
-                border-2 border-dashed rounded-lg p-12 text-center cursor-pointer
+                border-2 border-dashed rounded-lg p-6 md:p-12 text-center cursor-pointer
                 transition-colors
                 ${isDragActive 
                   ? 'border-primary bg-primary/5' 
@@ -164,7 +164,7 @@ export default function FilesPage() {
             >
               <input {...getInputProps()} />
               <svg
-                className="mx-auto h-12 w-12 text-muted-foreground"
+                className="mx-auto h-8 w-8 md:h-12 md:w-12 text-muted-foreground"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -176,44 +176,44 @@ export default function FilesPage() {
                   d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
                 />
               </svg>
-              <p className="mt-4 text-lg font-medium">
-                {isDragActive ? 'Drop files here' : 'Drag and drop files here'}
+              <p className="mt-3 md:mt-4 text-base md:text-lg font-medium">
+                {isDragActive ? 'Drop files here' : 'Tap to upload or drag files'}
               </p>
-              <p className="mt-2 text-sm text-muted-foreground">
+              <p className="mt-1 md:mt-2 text-sm text-muted-foreground hidden sm:block">
                 or <span className="text-primary">browse</span> to upload
               </p>
-              <p className="mt-4 text-xs text-muted-foreground">
-                Supports PDF, DOCX, DOC, TXT, PNG, JPG (max 50MB)
+              <p className="mt-2 md:mt-4 text-[10px] md:text-xs text-muted-foreground">
+                PDF, DOCX, TXT, PNG, JPG (max 50MB)
               </p>
             </div>
           </CardContent>
         </Card>
 
-        {/* File List */}
+        {/* File List - Mobile Responsive */}
         {files.length > 0 && (
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold">Uploaded Files</h2>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="space-y-3 md:space-y-4">
+            <h2 className="text-base md:text-lg font-semibold">Uploaded Files</h2>
+            <div className="grid gap-3 md:gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
               {files.map((file) => (
                 <Card key={file.id} className="relative">
-                  <CardContent className="p-4">
-                    <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
-                        <svg className="h-5 w-5 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <CardContent className="p-3 md:p-4">
+                    <div className="flex items-start gap-2 md:gap-3">
+                      <div className="w-8 h-8 md:w-10 md:h-10 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
+                        <svg className="h-4 w-4 md:h-5 md:w-5 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                         </svg>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{file.name}</p>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="font-medium text-sm md:text-base truncate">{file.name}</p>
+                        <p className="text-xs md:text-sm text-muted-foreground">
                           {formatFileSize(file.size)}
                         </p>
-                        <div className="flex items-center gap-2 mt-2">
-                          <div className={`w-2 h-2 rounded-full ${getStatusColor(file.status)}`} />
-                          <span className="text-xs capitalize">{file.status}</span>
+                        <div className="flex items-center gap-1.5 md:gap-2 mt-1.5 md:mt-2">
+                          <div className={`w-1.5 h-1.5 md:w-2 md:h-2 rounded-full ${getStatusColor(file.status)}`} />
+                          <span className="text-[10px] md:text-xs capitalize">{file.status}</span>
                         </div>
                         {file.status === 'uploading' && (
-                          <div className="mt-2 h-1 bg-muted rounded-full overflow-hidden">
+                          <div className="mt-1.5 md:mt-2 h-1 bg-muted rounded-full overflow-hidden">
                             <div 
                               className="h-full bg-primary transition-all"
                               style={{ width: `${file.progress}%` }}
@@ -221,18 +221,19 @@ export default function FilesPage() {
                           </div>
                         )}
                         {file.error && (
-                          <p className="text-xs text-destructive mt-1">{file.error}</p>
+                          <p className="text-[10px] md:text-xs text-destructive mt-1">{file.error}</p>
                         )}
                       </div>
-                      <div className="flex flex-col gap-1 flex-shrink-0">
+                      <div className="flex flex-col gap-0.5 md:gap-1 flex-shrink-0">
                         {file.status === 'ready' && file.url && (
                           <Button
                             variant="ghost"
                             size="sm"
+                            className="h-7 w-7 md:h-8 md:w-8 p-0"
                             onClick={() => window.open(file.url, '_blank')}
                             title="Open file"
                           >
-                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg className="h-3.5 w-3.5 md:h-4 md:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                             </svg>
                           </Button>
@@ -240,10 +241,11 @@ export default function FilesPage() {
                         <Button
                           variant="ghost"
                           size="sm"
+                          className="h-7 w-7 md:h-8 md:w-8 p-0"
                           onClick={() => removeFile(file.id)}
                           title="Remove file"
                         >
-                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <svg className="h-3.5 w-3.5 md:h-4 md:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                           </svg>
                         </Button>
@@ -256,16 +258,16 @@ export default function FilesPage() {
           </div>
         )}
 
-        {/* Empty State */}
+        {/* Empty State - Mobile Responsive */}
         {files.length === 0 && (
           <Card>
-            <CardContent className="py-12 text-center">
-              <svg className="mx-auto h-12 w-12 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <CardContent className="py-8 md:py-12 text-center px-4">
+              <svg className="mx-auto h-10 w-10 md:h-12 md:w-12 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
               </svg>
-              <h3 className="mt-4 text-lg font-medium">No files uploaded</h3>
-              <p className="mt-2 text-muted-foreground">
-                Upload your legal documents to get started with AI-powered analysis.
+              <h3 className="mt-3 md:mt-4 text-base md:text-lg font-medium">No files uploaded</h3>
+              <p className="mt-1 md:mt-2 text-sm text-muted-foreground">
+                Upload your legal documents to get started.
               </p>
             </CardContent>
           </Card>

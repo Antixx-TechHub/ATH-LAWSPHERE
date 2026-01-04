@@ -16,12 +16,15 @@ import {
   Users,
   ShieldCheck,
   BarChart3,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface SidebarProps {
   collapsed: boolean;
   onToggle: () => void;
+  isMobile?: boolean;
+  onClose?: () => void;
 }
 
 const navItems = [
@@ -38,14 +41,21 @@ const bottomNavItems = [
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
-export function Sidebar({ collapsed, onToggle }: SidebarProps) {
+export function Sidebar({ collapsed, onToggle, isMobile, onClose }: SidebarProps) {
   const pathname = usePathname();
+
+  const handleNavClick = () => {
+    if (isMobile && onClose) {
+      onClose();
+    }
+  };
 
   return (
     <aside
       className={cn(
-        "fixed left-0 top-0 z-40 h-screen bg-white dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-800 transition-all duration-300",
-        collapsed ? "w-14" : "w-52"
+        "h-screen bg-white dark:bg-neutral-900 border-r border-neutral-200 dark:border-neutral-800 transition-all duration-300",
+        isMobile ? "w-full" : "fixed left-0 top-0 z-40",
+        !isMobile && (collapsed ? "w-14" : "w-52")
       )}
     >
       {/* Logo */}
@@ -75,15 +85,17 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         </Link>
       </div>
       
-      {/* Collapse Toggle */}
+      {/* Collapse Toggle / Close Button */}
       <div className="absolute top-2 right-2">
         <Button
           variant="ghost"
           size="icon"
-          onClick={onToggle}
+          onClick={isMobile ? onClose : onToggle}
           className="h-7 w-7"
         >
-          {collapsed ? (
+          {isMobile ? (
+            <X className="h-4 w-4" />
+          ) : collapsed ? (
             <ChevronRight className="h-4 w-4" />
           ) : (
             <ChevronLeft className="h-4 w-4" />
@@ -100,16 +112,17 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={handleNavClick}
                 className={cn(
                   "flex items-center gap-2 px-2.5 py-1.5 rounded-md transition-colors",
                   isActive
                     ? "bg-primary-100 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400"
                     : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800",
-                  collapsed && "justify-center"
+                  collapsed && !isMobile && "justify-center"
                 )}
               >
                 <item.icon className="h-4 w-4 flex-shrink-0" />
-                {!collapsed && (
+                {(!collapsed || isMobile) && (
                   <span className="font-medium text-xs">{item.label}</span>
                 )}
               </Link>
@@ -125,16 +138,17 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={handleNavClick}
                 className={cn(
                   "flex items-center gap-2 px-2.5 py-1.5 rounded-md transition-colors",
                   isActive
                     ? "bg-primary-100 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400"
                     : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800",
-                  collapsed && "justify-center"
+                  collapsed && !isMobile && "justify-center"
                 )}
               >
                 <item.icon className="h-4 w-4 flex-shrink-0" />
-                {!collapsed && (
+                {(!collapsed || isMobile) && (
                   <span className="font-medium text-xs">{item.label}</span>
                 )}
               </Link>

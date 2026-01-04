@@ -127,45 +127,48 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="h-[calc(100vh-6rem)]">
+    <div className="h-[calc(100vh-6rem)] md:h-[calc(100vh-6rem)]">
       {/* Error Banner */}
       {error && (
-        <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+        <div className="mb-2 md:mb-4 p-2 md:p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <p className="text-xs md:text-sm text-red-800 dark:text-red-200">{error}</p>
         </div>
       )}
 
-      {/* Panel Toggle Tabs */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex gap-2">
+      {/* Panel Toggle Tabs - Scrollable on mobile */}
+      <div className="flex items-center justify-between mb-2 md:mb-4 overflow-x-auto">
+        <div className="flex gap-1 md:gap-2 flex-shrink-0">
           <Button
             variant={activePanel === "chat" ? "default" : "outline"}
             size="sm"
             onClick={() => setActivePanel("chat")}
+            className="text-xs md:text-sm px-2 md:px-3"
           >
-            <MessageSquare className="h-4 w-4 mr-2" />
-            Chat
+            <MessageSquare className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
+            <span className="hidden xs:inline">Chat</span>
           </Button>
           <Button
             variant={activePanel === "files" ? "default" : "outline"}
             size="sm"
             onClick={() => setActivePanel("files")}
+            className="text-xs md:text-sm px-2 md:px-3"
           >
-            <FileText className="h-4 w-4 mr-2" />
-            Files
+            <FileText className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
+            <span className="hidden xs:inline">Files</span>
           </Button>
           <Button
             variant={activePanel === "notes" ? "default" : "outline"}
             size="sm"
             onClick={() => setActivePanel("notes")}
+            className="text-xs md:text-sm px-2 md:px-3"
           >
-            <StickyNote className="h-4 w-4 mr-2" />
-            Notes
+            <StickyNote className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
+            <span className="hidden xs:inline">Notes</span>
           </Button>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 text-sm text-neutral-500">
+        <div className="flex items-center gap-2 md:gap-4 flex-shrink-0">
+          <div className="hidden md:flex items-center gap-2 text-sm text-neutral-500">
             <Users className="h-4 w-4" />
             <span>3 online</span>
           </div>
@@ -173,6 +176,7 @@ export default function ChatPage() {
             variant="ghost"
             size="icon"
             onClick={() => setRightPanelOpen(!rightPanelOpen)}
+            className="hidden md:flex h-8 w-8"
           >
             {rightPanelOpen ? (
               <PanelRightClose className="h-4 w-4" />
@@ -183,13 +187,16 @@ export default function ChatPage() {
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex gap-4 h-[calc(100%-3rem)]">
-        {/* Left Panel - Chat */}
+      {/* Main Content - Stack on mobile, side-by-side on desktop */}
+      <div className="flex flex-col md:flex-row gap-2 md:gap-4 h-[calc(100%-3rem)]">
+        {/* Left Panel - Chat (full width on mobile, or when files/notes tab is not active) */}
         <div
           className={cn(
-            "flex-1 transition-all duration-300",
-            rightPanelOpen ? "w-2/3" : "w-full"
+            "transition-all duration-300",
+            // On mobile: full height when chat active, hidden otherwise
+            activePanel === "chat" ? "flex-1" : "hidden md:block",
+            // On desktop: flex with right panel
+            rightPanelOpen ? "md:w-2/3" : "md:w-full"
           )}
         >
           {sessionId ? (
@@ -206,18 +213,22 @@ export default function ChatPage() {
           )}
         </div>
 
-        {/* Right Panel - Files/Notes */}
-        {rightPanelOpen && (
-          <div className="w-1/3 min-w-[300px]">
-            {activePanel === "files" ? (
-              sessionId ? <FilesPanel sessionId={sessionId} onFilesChanged={() => loadSessionData(sessionId)} refreshSignal={refreshSignal} /> : null
-            ) : activePanel === "notes" ? (
-              sessionId ? <NotesPanel sessionId={sessionId} /> : null
-            ) : (
-              sessionId ? <SessionInfoPanel sessionId={sessionId} files={sessionFiles} chatFiles={chatFiles} /> : null
-            )}
-          </div>
-        )}
+        {/* Right Panel - Files/Notes (full width on mobile when active) */}
+        <div className={cn(
+          "transition-all duration-300",
+          // On mobile: show only when files or notes tab is active
+          activePanel !== "chat" ? "flex-1" : "hidden md:block",
+          // On desktop: side panel with fixed width
+          rightPanelOpen ? "md:w-1/3 md:min-w-[280px]" : "md:hidden"
+        )}>
+          {activePanel === "files" ? (
+            sessionId ? <FilesPanel sessionId={sessionId} onFilesChanged={() => loadSessionData(sessionId)} refreshSignal={refreshSignal} /> : null
+          ) : activePanel === "notes" ? (
+            sessionId ? <NotesPanel sessionId={sessionId} /> : null
+          ) : (
+            sessionId ? <SessionInfoPanel sessionId={sessionId} files={sessionFiles} chatFiles={chatFiles} /> : null
+          )}
+        </div>
       </div>
     </div>
   );

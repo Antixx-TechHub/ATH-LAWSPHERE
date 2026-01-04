@@ -155,16 +155,16 @@ export default function SessionsPage() {
   }
 
   return (
-    <div className="h-[calc(100vh-8rem)]">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+    <div className="h-[calc(100vh-8rem)] pb-16 md:pb-0">
+      {/* Header - Mobile Responsive */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 md:mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Sessions</h1>
-          <p className="text-sm text-neutral-500 mt-1">
+          <h1 className="text-xl md:text-2xl font-bold text-neutral-900 dark:text-white">Sessions</h1>
+          <p className="text-xs md:text-sm text-neutral-500 mt-1 hidden sm:block">
             Manage your chat sessions and continue previous conversations
           </p>
         </div>
-        <Button onClick={handleNewSession}>
+        <Button onClick={handleNewSession} size="sm" className="w-full sm:w-auto">
           <Plus className="h-4 w-4 mr-2" />
           New Session
         </Button>
@@ -172,58 +172,58 @@ export default function SessionsPage() {
 
       {/* Error Banner */}
       {error && (
-        <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+        <div className="mb-4 p-3 md:p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <p className="text-xs md:text-sm text-red-800 dark:text-red-200">{error}</p>
         </div>
       )}
 
       {/* Search */}
-      <div className="relative mb-6">
+      <div className="relative mb-4 md:mb-6">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-neutral-400" />
         <Input
           placeholder="Search sessions..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10"
+          className="pl-10 text-sm"
         />
       </div>
 
-      {/* Sessions Grid */}
+      {/* Sessions Grid - Mobile Responsive */}
       {filteredSessions.length === 0 ? (
-        <div className="text-center py-12">
-          <MessageSquare className="h-12 w-12 text-neutral-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-neutral-900 dark:text-white mb-2">
+        <div className="text-center py-8 md:py-12">
+          <MessageSquare className="h-10 w-10 md:h-12 md:w-12 text-neutral-300 mx-auto mb-4" />
+          <h3 className="text-base md:text-lg font-medium text-neutral-900 dark:text-white mb-2">
             {searchQuery ? "No sessions found" : "No sessions yet"}
           </h3>
-          <p className="text-neutral-500 mb-4">
+          <p className="text-sm text-neutral-500 mb-4 px-4">
             {searchQuery
               ? "Try a different search term"
               : "Start a new chat session to get started"}
           </p>
           {!searchQuery && (
-            <Button onClick={handleNewSession}>
+            <Button onClick={handleNewSession} size="sm">
               <Plus className="h-4 w-4 mr-2" />
               Create your first session
             </Button>
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
           {filteredSessions.map((session) => (
             <div
               key={session.id}
               onClick={() => editingSessionId !== session.id && handleOpenSession(session.id)}
               className={cn(
-                "p-4 bg-white dark:bg-neutral-900 rounded-lg border border-neutral-200 dark:border-neutral-800",
+                "p-3 md:p-4 bg-white dark:bg-neutral-900 rounded-lg border border-neutral-200 dark:border-neutral-800",
                 "hover:border-primary-300 dark:hover:border-primary-700 hover:shadow-md",
                 "cursor-pointer transition-all duration-200",
                 editingSessionId === session.id && "border-primary-500 ring-1 ring-primary-500"
               )}
             >
-              <div className="flex items-start justify-between mb-3">
+              <div className="flex items-start justify-between mb-2 md:mb-3">
                 <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <div className="p-2 bg-primary-50 dark:bg-primary-900/30 rounded-lg flex-shrink-0">
-                    <MessageSquare className="h-4 w-4 text-primary-600" />
+                  <div className="p-1.5 md:p-2 bg-primary-50 dark:bg-primary-900/30 rounded-lg flex-shrink-0">
+                    <MessageSquare className="h-3 w-3 md:h-4 md:w-4 text-primary-600" />
                   </div>
                   {editingSessionId === session.id ? (
                     <div className="flex items-center gap-1 flex-1" onClick={(e) => e.stopPropagation()}>
@@ -232,28 +232,28 @@ export default function SessionsPage() {
                         value={editingTitle}
                         onChange={(e) => setEditingTitle(e.target.value)}
                         onKeyDown={(e) => handleRenameKeyDown(session.id, e)}
-                        className="h-8 text-sm"
+                        className="h-7 md:h-8 text-xs md:text-sm"
                         placeholder="Session name..."
                       />
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        className="h-7 w-7 flex-shrink-0"
+                        className="h-6 w-6 md:h-7 md:w-7 flex-shrink-0"
                         onClick={(e) => handleSaveRename(session.id, e)}
                       >
-                        <Check className="h-4 w-4 text-green-600" />
+                        <Check className="h-3 w-3 md:h-4 md:w-4 text-green-600" />
                       </Button>
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        className="h-7 w-7 flex-shrink-0"
+                        className="h-6 w-6 md:h-7 md:w-7 flex-shrink-0"
                         onClick={handleCancelRename}
                       >
-                        <X className="h-4 w-4 text-neutral-500" />
+                        <X className="h-3 w-3 md:h-4 md:w-4 text-neutral-500" />
                       </Button>
                     </div>
                   ) : (
-                    <h3 className="font-medium text-neutral-900 dark:text-white truncate max-w-[180px]">
+                    <h3 className="font-medium text-sm md:text-base text-neutral-900 dark:text-white truncate">
                       {session.title || "Untitled Session"}
                     </h3>
                   )}
@@ -261,8 +261,8 @@ export default function SessionsPage() {
                 {editingSessionId !== session.id && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
-                        <MoreVertical className="h-4 w-4" />
+                      <Button variant="ghost" size="icon" className="h-7 w-7 md:h-8 md:w-8 flex-shrink-0">
+                        <MoreVertical className="h-3 w-3 md:h-4 md:w-4" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
@@ -280,13 +280,13 @@ export default function SessionsPage() {
               </div>
 
               {session.last_message_preview && (
-                <p className="text-sm text-neutral-500 line-clamp-2 mb-3">
+                <p className="text-xs md:text-sm text-neutral-500 line-clamp-2 mb-2 md:mb-3">
                   {session.last_message_preview}
                 </p>
               )}
 
-              <div className="flex items-center text-xs text-neutral-400">
-                <Clock className="h-3 w-3 mr-1" />
+              <div className="flex items-center text-[10px] md:text-xs text-neutral-400">
+                <Clock className="h-2.5 w-2.5 md:h-3 md:w-3 mr-1" />
                 {formatDate(session.updated_at)}
               </div>
             </div>

@@ -400,24 +400,24 @@ USER QUESTION: ${input}`;
 
   return (
     <div className="flex flex-col h-full bg-white dark:bg-neutral-900 rounded-lg border border-neutral-200 dark:border-neutral-800 overflow-hidden">
-      {/* Chat Header */}
-      <div className="flex items-center justify-between p-3 border-b border-neutral-200 dark:border-neutral-800">
+      {/* Chat Header - Responsive */}
+      <div className="flex items-center justify-between p-2 md:p-3 border-b border-neutral-200 dark:border-neutral-800">
         <div className="flex items-center gap-2">
-          <div className="p-1.5 rounded-md bg-primary-100 dark:bg-primary-900/20">
-            <Sparkles className="h-4 w-4 text-primary-600" />
+          <div className="p-1 md:p-1.5 rounded-md bg-primary-100 dark:bg-primary-900/20">
+            <Sparkles className="h-3 w-3 md:h-4 md:w-4 text-primary-600" />
           </div>
           <div>
-            <h2 className="font-semibold text-sm">AI Legal Assistant</h2>
-            <p className="text-xs text-neutral-500">
+            <h2 className="font-semibold text-xs md:text-sm">AI Legal Assistant</h2>
+            <p className="text-[10px] md:text-xs text-neutral-500 hidden sm:block">
               Privacy-first multi-model AI
             </p>
           </div>
         </div>
 
-        {/* Session Cost Display */}
-        <div className="flex items-center gap-3">
+        {/* Session Cost Display - Compact on mobile */}
+        <div className="flex items-center gap-2 md:gap-3">
           {sessionCost.queries > 0 && (
-            <div className="flex items-center gap-2 text-xs">
+            <div className="hidden sm:flex items-center gap-2 text-xs">
               <div className="flex flex-col items-end">
                 <span className="text-neutral-500">
                   {sessionCost.queries} queries
@@ -438,10 +438,10 @@ USER QUESTION: ${input}`;
             </div>
           )}
 
-          {/* Model Selector with Trust Indicators */}
+          {/* Model Selector with Trust Indicators - Compact on mobile */}
           <Select value={selectedModel} onValueChange={setSelectedModel}>
-            <SelectTrigger className="w-[200px] h-8 text-xs">
-              <SelectValue placeholder="Select Model" />
+            <SelectTrigger className="w-[120px] md:w-[200px] h-7 md:h-8 text-[10px] md:text-xs">
+              <SelectValue placeholder="Model" />
             </SelectTrigger>
             <SelectContent>
             {/* Auto Mode - Recommended */}
@@ -500,29 +500,29 @@ USER QUESTION: ${input}`;
         </div>
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      {/* Messages - Mobile Responsive */}
+      <div className="flex-1 overflow-y-auto p-2 md:p-4 space-y-3 md:space-y-4">
         {messages.map((message) => (
           <div
             key={message.id}
             className={cn(
-              "flex gap-3 message-enter",
+              "flex gap-2 md:gap-3 message-enter",
               message.type === "user" && "flex-row-reverse"
             )}
           >
-            {/* Avatar */}
-            <Avatar className="h-8 w-8 flex-shrink-0">
+            {/* Avatar - Smaller on mobile */}
+            <Avatar className="h-6 w-6 md:h-8 md:w-8 flex-shrink-0">
               {message.type === "ai" ? (
                 <AvatarFallback className="bg-primary-100 text-primary-700">
-                  <Bot className="h-4 w-4" />
+                  <Bot className="h-3 w-3 md:h-4 md:w-4" />
                 </AvatarFallback>
               ) : message.type === "system" ? (
                 <AvatarFallback className="bg-neutral-100 text-neutral-700">
-                  <Sparkles className="h-4 w-4" />
+                  <Sparkles className="h-3 w-3 md:h-4 md:w-4" />
                 </AvatarFallback>
               ) : (
                 <AvatarFallback className="bg-accent-100 text-accent-700">
-                  <User className="h-4 w-4" />
+                  <User className="h-3 w-3 md:h-4 md:w-4" />
                 </AvatarFallback>
               )}
             </Avatar>
@@ -648,13 +648,13 @@ USER QUESTION: ${input}`;
 
         {/* Loading Indicator */}
         {isLoading && (
-          <div className="flex gap-3">
-            <Avatar className="h-8 w-8">
+          <div className="flex gap-2 md:gap-3">
+            <Avatar className="h-6 w-6 md:h-8 md:w-8">
               <AvatarFallback className="bg-primary-100 text-primary-700">
-                <Bot className="h-4 w-4" />
+                <Bot className="h-3 w-3 md:h-4 md:w-4" />
               </AvatarFallback>
             </Avatar>
-            <div className="bg-neutral-50 dark:bg-neutral-800 rounded-md p-3 border border-neutral-200 dark:border-neutral-700">
+            <div className="bg-neutral-50 dark:bg-neutral-800 rounded-md p-2 md:p-3 border border-neutral-200 dark:border-neutral-700">
               <div className="typing-indicator flex gap-1">
                 <span className="w-1.5 h-1.5 bg-neutral-400 rounded-full" />
                 <span className="w-1.5 h-1.5 bg-neutral-400 rounded-full" />
@@ -667,28 +667,28 @@ USER QUESTION: ${input}`;
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
+      {/* Input Area - Mobile Responsive */}
       <form
         onSubmit={handleSubmit}
-        className="p-3 border-t border-neutral-200 dark:border-neutral-800"
+        className="p-2 md:p-3 border-t border-neutral-200 dark:border-neutral-800"
       >
         {/* Attached Documents Indicator */}
         {attachedDocs.length > 0 && (
-          <div className="mb-2 space-y-1.5 p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
+          <div className="mb-2 space-y-1 md:space-y-1.5 p-1.5 md:p-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
             {attachedDocs.map((doc) => (
-              <div key={doc.id} className="flex items-center gap-2">
-                <FileText className="h-4 w-4 text-blue-600 flex-shrink-0" />
-                <span className="text-sm text-blue-700 dark:text-blue-400 flex-1 truncate">
+              <div key={doc.id} className="flex items-center gap-1.5 md:gap-2">
+                <FileText className="h-3 w-3 md:h-4 md:w-4 text-blue-600 flex-shrink-0" />
+                <span className="text-xs md:text-sm text-blue-700 dark:text-blue-400 flex-1 truncate">
                   {doc.name} ({(doc.size / 1024).toFixed(1)} KB)
                 </span>
                 <Button 
                   type="button" 
                   variant="ghost" 
                   size="icon" 
-                  className="h-6 w-6 text-blue-600 hover:text-red-600"
+                  className="h-5 w-5 md:h-6 md:w-6 text-blue-600 hover:text-red-600"
                   onClick={() => handleRemoveAttachment(doc.id)}
                 >
-                  <X className="h-3 w-3" />
+                  <X className="h-2.5 w-2.5 md:h-3 md:w-3" />
                 </Button>
               </div>
             ))}
@@ -697,7 +697,7 @@ USER QUESTION: ${input}`;
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="w-full mt-1 text-xs"
+                className="w-full mt-1 text-[10px] md:text-xs"
                 onClick={handleRemoveAllAttachments}
               >
                 Remove all
@@ -706,7 +706,7 @@ USER QUESTION: ${input}`;
           </div>
         )}
 
-        <div className="flex gap-2">
+        <div className="flex gap-1.5 md:gap-2">
           {/* Hidden file input */}
           <input
             ref={fileInputRef}
@@ -720,7 +720,7 @@ USER QUESTION: ${input}`;
             type="button" 
             variant="ghost" 
             size="icon" 
-            className={cn("h-8 w-8", attachedDocs.length > 0 && "text-blue-600")}
+            className={cn("h-8 w-8 flex-shrink-0", attachedDocs.length > 0 && "text-blue-600")}
             onClick={() => fileInputRef.current?.click()}
             title={`Attach documents (.txt, .md, .json) - ${attachedDocs.length} attached`}
           >
@@ -730,15 +730,15 @@ USER QUESTION: ${input}`;
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={attachedDocs.length > 0 ? "Ask about the attached document..." : "Ask a legal question..."}
-            className="min-h-[36px] max-h-24 resize-none text-sm"
+            placeholder={attachedDocs.length > 0 ? "Ask about document..." : "Ask a legal question..."}
+            className="min-h-[36px] max-h-20 md:max-h-24 resize-none text-xs md:text-sm flex-1"
             rows={1}
           />
-          <Button type="submit" disabled={!input.trim() || isLoading} className="h-8">
+          <Button type="submit" disabled={!input.trim() || isLoading} className="h-8 px-2 md:px-3 flex-shrink-0">
             <Send className="h-4 w-4" />
           </Button>
         </div>
-        <p className="text-[10px] text-neutral-500 mt-1.5 text-center">
+        <p className="text-[9px] md:text-[10px] text-neutral-500 mt-1 md:mt-1.5 text-center hidden sm:block">
           {attachedDocs.length > 0
             ? `📎 ${attachedDocs.length} Document${attachedDocs.length > 1 ? 's' : ''} attached • Press Enter to send` 
             : "Press Enter to send, Shift + Enter for new line • Click 📎 to attach .txt files"}

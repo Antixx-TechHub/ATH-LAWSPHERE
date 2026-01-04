@@ -6,6 +6,11 @@ import GitHubProvider from "next-auth/providers/github";
 import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
 
+// Warn if NEXTAUTH_SECRET is missing in production
+if (!process.env.NEXTAUTH_SECRET && process.env.NODE_ENV === "production") {
+  console.error("❌ NEXTAUTH_SECRET is not set! Authentication will fail.");
+}
+
 export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
   adapter: PrismaAdapter(prisma) as any,
@@ -25,33 +30,49 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
+        console.log("[Auth] Credentials login attempt for:", credentials?.email);
+        
         if (!credentials?.email || !credentials?.password) {
+          console.log("[Auth] Missing email or password");
           throw new Error("Invalid credentials");
         }
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
-        });
+        try {
+          const user = await prisma.user.findUnique({
+            where: { email: credentials.email },
+          });
 
-        if (!user || !user.passwordHash) {
-          throw new Error("Invalid credentials");
+          if (!user) {
+            console.log("[Auth] User not found:", credentials.email);
+            throw new Error("Invalid credentials");
+          }
+          
+          if (!user.passwordHash) {
+            console.log("[Auth] User has no password (OAuth account):", credentials.email);
+            throw new Error("Invalid credentials");
+          }
+
+          const isValid = await bcrypt.compare(
+            credentials.password,
+            user.passwordHash
+          );
+
+          if (!isValid) {
+            console.log("[Auth] Invalid password for:", credentials.email);
+            throw new Error("Invalid credentials");
+          }
+
+          console.log("[Auth] Login successful for:", credentials.email);
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            image: user.image,
+          };
+        } catch (error) {
+          console.error("[Auth] Error during login:", error);
+          throw error;
         }
-
-        const isValid = await bcrypt.compare(
-          credentials.password,
-          user.passwordHash
-        );
-
-        if (!isValid) {
-          throw new Error("Invalid credentials");
-        }
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          image: user.image,
-        };
       },
     }),
   ],
@@ -112,7 +133,8 @@ export const authOptions: NextAuthOptions = {
       }
     },
   },
-  debug: process.env.NODE_ENV === "development",
+  // Enable debug in production temporarily to diagnose auth issues
+  debug: process.env.NODE_ENV === "development" || process.env.AUTH_DEBUG === "true",
 };
 
 // Extend next-auth types

@@ -265,6 +265,10 @@ export function ChatPanel({ sessionId, onSessionUpdate }: ChatPanelProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
+    
+    // CRITICAL: Check if user expects file but none is attached
+    const hasAttachedFile = attachedDocs.length > 0;
+    console.log('[Chat] Submit - hasAttachedFile:', hasAttachedFile, 'attachedDocs:', attachedDocs);
 
     const userMessage: Message = {
       id: Date.now().toString(),

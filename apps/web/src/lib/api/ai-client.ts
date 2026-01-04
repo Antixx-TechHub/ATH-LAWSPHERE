@@ -175,7 +175,7 @@ class AIClient {
       method: 'POST',
       body: JSON.stringify({
         force_local: false,
-        file_attached: false,
+        file_attached: request.document_attached || false,  // Map frontend field to backend field
         file_name: null,
         file_content: null,
         ...request,

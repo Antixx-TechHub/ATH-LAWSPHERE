@@ -204,6 +204,25 @@ class TrustChatResponse(BaseModel):
     routing_time_ms: float
 
 
+def get_legal_system_prompt(file_attached: bool = False) -> str:
+    """Generate system prompt with document-focus instruction when needed."""
+    base_prompt = """You are an expert Indian legal AI assistant. 
+You help with legal queries, document analysis, and legal research.
+Be accurate, cite relevant laws and sections when applicable.
+Maintain attorney-client privilege and confidentiality."""
+    
+    if file_attached:
+        base_prompt += """
+
+IMPORTANT: The user has attached a document. When answering questions:
+1. Focus primarily on the content of the attached document
+2. Base your answers on the information provided in the document
+3. Quote relevant sections from the document when applicable
+4. If the document doesn't contain the answer, clearly state that and provide general guidance"""
+    
+    return base_prompt
+
+
 @router.post("/trust/completions", response_model=TrustChatResponse)
 async def create_trust_chat_completion(request: TrustChatRequest, db: AsyncSession = Depends(get_db)):
     """
@@ -353,11 +372,7 @@ async def create_trust_chat_completion(request: TrustChatRequest, db: AsyncSessi
                     if not any(m["role"] == "system" for m in groq_messages):
                         groq_messages.insert(0, {
                             "role": "system",
-                            "content": """You are an expert Indian legal AI assistant. 
-You help with legal queries, document analysis, and legal research.
-Be accurate, cite relevant laws and sections when applicable.
-Maintain attorney-client privilege and confidentiality.
-You are powered by an open-source LLM for privacy."""
+                            "content": get_legal_system_prompt(request.file_attached)
                         })
                     
                     # Call Groq with the selected model
@@ -443,10 +458,7 @@ You are powered by an open-source LLM for privacy."""
                         if not any(m["role"] == "system" for m in ollama_messages):
                             ollama_messages.insert(0, {
                                 "role": "system",
-                                "content": """You are an expert Indian legal AI assistant. 
-You help with legal queries, document analysis, and legal research.
-Be accurate, cite relevant laws and sections when applicable.
-Maintain attorney-client privilege and confidentiality."""
+                                "content": get_legal_system_prompt(request.file_attached)
                             })
                         
                         # Call Ollama
@@ -484,10 +496,7 @@ Maintain attorney-client privilege and confidentiality."""
                             if not any(m["role"] == "system" for m in groq_messages):
                                 groq_messages.insert(0, {
                                     "role": "system",
-                                    "content": """You are an expert Indian legal AI assistant. 
-You help with legal queries, document analysis, and legal research.
-Be accurate, cite relevant laws and sections when applicable.
-Maintain attorney-client privilege and confidentiality."""
+                                    "content": get_legal_system_prompt(request.file_attached)
                                 })
                             
                             # Use llama-3.1-8b-instant as fast fallback
@@ -541,7 +550,7 @@ Maintain attorney-client privilege and confidentiality."""
                             if not any(m["role"] == "system" for m in groq_messages):
                                 groq_messages.insert(0, {
                                     "role": "system",
-                                    "content": """You are an expert Indian legal AI assistant."""
+                                    "content": get_legal_system_prompt(request.file_attached)
                                 })
                             
                             groq_response = await groq_client.chat_completion(

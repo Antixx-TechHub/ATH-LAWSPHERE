@@ -10,9 +10,10 @@ export const dynamic = 'force-dynamic';
 
 export async function POST() {
   try {
-    // Create AI service tables using raw SQL
+    // Create AI service tables using raw SQL - one statement at a time
+    
+    // 1. Create chat_sessions table
     await prisma.$executeRawUnsafe(`
-      -- Create chat_sessions table
       CREATE TABLE IF NOT EXISTS chat_sessions (
         id VARCHAR PRIMARY KEY,
         user_id VARCHAR,
@@ -21,9 +22,11 @@ export async function POST() {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         last_message_at TIMESTAMP,
         last_message_preview VARCHAR(500)
-      );
+      )
+    `);
 
-      -- Create chat_messages table
+    // 2. Create chat_messages table
+    await prisma.$executeRawUnsafe(`
       CREATE TABLE IF NOT EXISTS chat_messages (
         id SERIAL PRIMARY KEY,
         session_id VARCHAR REFERENCES chat_sessions(id) ON DELETE CASCADE,
@@ -31,11 +34,14 @@ export async function POST() {
         content TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         meta JSONB
-      );
-      CREATE INDEX IF NOT EXISTS idx_chat_messages_session_id ON chat_messages(session_id);
-      CREATE INDEX IF NOT EXISTS idx_chat_messages_created_at ON chat_messages(created_at);
+      )
+    `);
+    
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_chat_messages_session_id ON chat_messages(session_id)`);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_chat_messages_created_at ON chat_messages(created_at)`);
 
-      -- Create session_files table
+    // 3. Create session_files table
+    await prisma.$executeRawUnsafe(`
       CREATE TABLE IF NOT EXISTS session_files (
         id VARCHAR PRIMARY KEY,
         session_id VARCHAR REFERENCES chat_sessions(id) ON DELETE CASCADE,
@@ -48,10 +54,12 @@ export async function POST() {
         pii_detected BOOLEAN,
         extracted_text TEXT,
         raw_content BYTEA
-      );
-      CREATE INDEX IF NOT EXISTS idx_session_files_session_id ON session_files(session_id);
+      )
+    `);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_session_files_session_id ON session_files(session_id)`);
 
-      -- Create notes table
+    // 4. Create notes table
+    await prisma.$executeRawUnsafe(`
       CREATE TABLE IF NOT EXISTS notes (
         id VARCHAR PRIMARY KEY,
         session_id VARCHAR REFERENCES chat_sessions(id) ON DELETE CASCADE,
@@ -59,12 +67,22 @@ export async function POST() {
         content TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        version INTEGER DEFAULT 1,
-        UNIQUE(session_id, title)
-      );
-      CREATE INDEX IF NOT EXISTS idx_notes_session_id ON notes(session_id);
+        version INTEGER DEFAULT 1
+      )
+    `);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_notes_session_id ON notes(session_id)`);
+    
+    // 5. Add unique constraint on notes (session_id, title)
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE notes DROP CONSTRAINT IF EXISTS uq_note_title_per_session
+    `).catch(() => {}); // Ignore if doesn't exist
+    
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE notes ADD CONSTRAINT uq_note_title_per_session UNIQUE (session_id, title)
+    `).catch(() => {}); // Ignore if already exists
 
-      -- Create note_history table
+    // 6. Create note_history table
+    await prisma.$executeRawUnsafe(`
       CREATE TABLE IF NOT EXISTS note_history (
         id VARCHAR PRIMARY KEY,
         note_id VARCHAR REFERENCES notes(id) ON DELETE CASCADE,
@@ -72,9 +90,9 @@ export async function POST() {
         title VARCHAR(255),
         content TEXT,
         edited_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-      CREATE INDEX IF NOT EXISTS idx_note_history_note_id ON note_history(note_id);
+      )
     `);
+    await prisma.$executeRawUnsafe(`CREATE INDEX IF NOT EXISTS idx_note_history_note_id ON note_history(note_id)`);
 
     return NextResponse.json({
       success: true,

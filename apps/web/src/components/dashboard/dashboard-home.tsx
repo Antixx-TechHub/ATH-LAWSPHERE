@@ -1,6 +1,8 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,71 +15,43 @@ import {
   Plus,
   ArrowRight,
   Bot,
+  Loader2,
+  IndianRupee,
 } from "lucide-react";
+import { aiClient } from "@/lib/api/ai-client";
 
 interface DashboardHomeProps {
   user?: {
-    id: string;
+    id?: string;
     name?: string | null;
-    email: string;
+    email?: string;
   };
 }
 
-const stats = [
-  {
-    title: "Active Sessions",
-    value: "12",
-    change: "+2",
-    icon: Users,
-    color: "text-primary-600",
-    bgColor: "bg-primary-100",
-  },
-  {
-    title: "Documents",
-    value: "248",
-    change: "+15",
-    icon: FileText,
-    color: "text-accent-600",
-    bgColor: "bg-accent-100",
-  },
-  {
-    title: "AI Interactions",
-    value: "1,847",
-    change: "+234",
-    icon: Bot,
-    color: "text-purple-600",
-    bgColor: "bg-purple-100",
-  },
-  {
-    title: "Notes",
-    value: "67",
-    change: "+8",
-    icon: StickyNote,
-    color: "text-amber-600",
-    bgColor: "bg-amber-100",
-  },
-];
+interface Session {
+  id: string;
+  title: string;
+  updated_at: string;
+  last_message_preview?: string;
+}
 
-const recentSessions = [
-  {
-    id: "1",
-    name: "Contract Review - ABC Corp",
-    participants: 3,
-    lastActive: "5 min ago",
-  },
-  {
-    id: "2",
-    name: "Legal Research - Patent Case",
-    participants: 2,
-    lastActive: "1 hour ago",
-  },
-  {
-    id: "3",
-    name: "Client Consultation - Smith v. Jones",
-    participants: 4,
-    lastActive: "3 hours ago",
-  },
-];
+interface AnalyticsData {
+  summary: {
+    totalMessages: number;
+    totalCost: number;
+    totalSaved: number;
+    totalCloudCost: number;
+    savingsPercent: number;
+    totalTokens: number;
+    avgLatency: number;
+  };
+  routing: {
+    localMessages: number;
+    cloudMessages: number;
+    piiDetectedCount: number;
+    localPercent: number;
+  };
+}
 
 const quickActions = [
   {
@@ -104,7 +78,119 @@ const quickActions = [
 ];
 
 export function DashboardHome({ user }: DashboardHomeProps) {
-  const greeting = getGreeting();
+  const { data: authSession } = useSession();
+  const userId = authSession?.user?.id || authSession?.user?.email || user?.id || user?.email;
+  
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [totalFiles, setTotalFiles] = useState(0);
+  const [totalNotes, setTotalNotes] = useState(0);
+  const [greeting, setGreeting] = useState("Hello"); // Static default for SSR
+  const [mounted, setMounted] = useState(false);
+
+  // Set greeting on client only to avoid hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+    const hour = new Date().getHours();
+    if (hour < 12) setGreeting("Good morning");
+    else if (hour < 18) setGreeting("Good afternoon");
+    else setGreeting("Good evening");
+  }, []);
+
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      if (!mounted) return;
+      
+      try {
+        setLoading(true);
+        
+        // Load sessions
+        const sessionList = await aiClient.listSessions(userId);
+        setSessions(sessionList.slice(0, 5)); // Show last 5
+        
+        // Count files and notes across sessions
+        let filesCount = 0;
+        let notesCount = 0;
+        for (const session of sessionList.slice(0, 10)) { // Check first 10 sessions
+          try {
+            const ctx = await aiClient.getSessionContext(session.id);
+            filesCount += ctx.files?.length || 0;
+            notesCount += ctx.notes?.length || 0;
+          } catch (e) {
+            console.warn('Failed to get context for session', session.id);
+          }
+        }
+        setTotalFiles(filesCount);
+        setTotalNotes(notesCount);
+        
+        // Load analytics
+        const analyticsRes = await fetch('/api/analytics?range=week');
+        if (analyticsRes.ok) {
+          const data = await analyticsRes.json();
+          setAnalytics(data);
+        }
+      } catch (error) {
+        console.error('Failed to load dashboard data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    if (mounted && userId) {
+      loadDashboardData();
+    } else if (mounted) {
+      setLoading(false);
+    }
+  }, [userId, mounted]);
+  
+  // Build stats from real data
+  const stats = [
+    {
+      title: "Active Sessions",
+      value: loading ? "-" : sessions.length.toString(),
+      icon: Users,
+      color: "text-primary-600",
+      bgColor: "bg-primary-100",
+    },
+    {
+      title: "Documents",
+      value: loading ? "-" : totalFiles.toString(),
+      icon: FileText,
+      color: "text-accent-600",
+      bgColor: "bg-accent-100",
+    },
+    {
+      title: "AI Interactions",
+      value: loading ? "-" : (analytics?.summary.totalMessages || 0).toString(),
+      icon: Bot,
+      color: "text-purple-600",
+      bgColor: "bg-purple-100",
+    },
+    {
+      title: "Notes",
+      value: loading ? "-" : totalNotes.toString(),
+      icon: StickyNote,
+      color: "text-amber-600",
+      bgColor: "bg-amber-100",
+    },
+  ];
+
+  // Format relative time
+  const formatRelativeTime = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+    
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins} min ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    return date.toLocaleDateString();
+  };
 
   return (
     <div className="space-y-4 md:space-y-5 pb-16 md:pb-0">
@@ -128,12 +214,13 @@ export function DashboardHome({ user }: DashboardHomeProps) {
                   <p className="text-[10px] md:text-xs font-medium text-neutral-600 dark:text-neutral-400 truncate">
                     {stat.title}
                   </p>
-                  <p className="text-lg md:text-xl font-bold mt-0.5">{stat.value}</p>
-                  <div className="flex items-center gap-1 mt-0.5 text-[10px] md:text-xs text-accent-600">
-                    <TrendingUp className="h-2.5 w-2.5 md:h-3 md:w-3" />
-                    <span className="hidden sm:inline">{stat.change} this week</span>
-                    <span className="sm:hidden">{stat.change}</span>
-                  </div>
+                  <p className="text-lg md:text-xl font-bold mt-0.5">
+                    {loading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      stat.value
+                    )}
+                  </p>
                 </div>
                 <div className={`p-1.5 md:p-2 rounded-md ${stat.bgColor} flex-shrink-0`}>
                   <stat.icon className={`h-4 w-4 md:h-5 md:w-5 ${stat.color}`} />
@@ -143,6 +230,37 @@ export function DashboardHome({ user }: DashboardHomeProps) {
           </Card>
         ))}
       </div>
+
+      {/* Cost Savings Card */}
+      {analytics && analytics.summary.totalSaved > 0 && (
+        <Card className="bg-gradient-to-r from-accent-50 to-primary-50 dark:from-accent-900/20 dark:to-primary-900/20 border-accent-200 dark:border-accent-800">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-accent-700 dark:text-accent-300 font-medium">
+                  💰 Cost Savings This Week
+                </p>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <span className="text-2xl font-bold text-accent-700 dark:text-accent-300 flex items-center">
+                    <IndianRupee className="h-5 w-5" />
+                    {(analytics.summary.totalSaved * 83).toFixed(2)}
+                  </span>
+                  <span className="text-sm text-accent-600 dark:text-accent-400">
+                    saved vs cloud
+                  </span>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="flex items-center gap-1 text-accent-600">
+                  <TrendingUp className="h-4 w-4" />
+                  <span className="text-sm font-medium">{analytics.routing.localPercent}%</span>
+                </div>
+                <p className="text-xs text-accent-600 dark:text-accent-400">local processing</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4">
         {/* Quick Actions */}
@@ -191,8 +309,23 @@ export function DashboardHome({ user }: DashboardHomeProps) {
               </Link>
             </CardHeader>
             <CardContent className="px-4 pb-4">
+              {loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-neutral-400" />
+                </div>
+              ) : sessions.length === 0 ? (
+                <div className="text-center py-8">
+                  <MessageSquare className="h-8 w-8 mx-auto text-neutral-300 dark:text-neutral-600 mb-2" />
+                  <p className="text-sm text-neutral-500">No sessions yet</p>
+                  <Link href="/dashboard/chat">
+                    <Button variant="outline" size="sm" className="mt-2">
+                      Start your first chat
+                    </Button>
+                  </Link>
+                </div>
+              ) : (
               <div className="space-y-2 md:space-y-3">
-                {recentSessions.map((session) => (
+                {sessions.map((session) => (
                   <Link
                     key={session.id}
                     href={`/dashboard/chat?session=${session.id}`}
@@ -203,32 +336,28 @@ export function DashboardHome({ user }: DashboardHomeProps) {
                           <MessageSquare className="h-3.5 w-3.5 md:h-4 md:w-4 text-primary-600" />
                         </div>
                         <div className="min-w-0">
-                          <p className="font-medium text-xs md:text-sm truncate">{session.name}</p>
-                          <p className="text-[10px] md:text-xs text-neutral-500 hidden sm:block">
-                            {session.participants} participants
+                          <p className="font-medium text-xs md:text-sm truncate">{session.title || "Untitled Session"}</p>
+                          {session.last_message_preview && (
+                          <p className="text-[10px] md:text-xs text-neutral-500 hidden sm:block truncate">
+                            {session.last_message_preview}
                           </p>
+                          )}
                         </div>
                       </div>
                       <div className="text-right flex-shrink-0">
                         <p className="text-[10px] md:text-xs text-neutral-500">
-                          {session.lastActive}
+                          {formatRelativeTime(session.updated_at)}
                         </p>
                       </div>
                     </div>
                   </Link>
                 ))}
               </div>
+              )}
             </CardContent>
           </Card>
         </div>
       </div>
     </div>
   );
-}
-
-function getGreeting(): string {
-  const hour = new Date().getHours();
-  if (hour < 12) return "Good morning";
-  if (hour < 18) return "Good afternoon";
-  return "Good evening";
 }

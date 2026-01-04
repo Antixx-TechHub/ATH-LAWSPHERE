@@ -32,7 +32,17 @@ def _normalize_url(url: str) -> str:
 
 
 def _create_engine(url: str):
-    return create_async_engine(_normalize_url(url), echo=False, future=True)
+    normalized = _normalize_url(url)
+    # Use connection pooling settings suitable for Railway
+    return create_async_engine(
+        normalized, 
+        echo=False, 
+        future=True,
+        pool_size=5,
+        max_overflow=10,
+        pool_pre_ping=True,  # Verify connections before use
+        pool_recycle=300,  # Recycle connections every 5 minutes
+    )
 
 
 # Engine/session initialized during app startup in init_db()

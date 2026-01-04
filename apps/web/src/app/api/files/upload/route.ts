@@ -1,36 +1,24 @@
 /**
  * File Upload API
- * Handles file uploads to local storage or S3, stores metadata in PostgreSQL
- * Works for both local development and production (Railway)
+ * Handles file uploads with multiple storage backends:
+ * - S3/R2 for production with object storage
+ * - PostgreSQL for Railway (persists across deploys)
+ * - Local filesystem for development
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
-import { promises as fs } from 'fs';
-import path from 'path';
+import { uploadFile, getStorageInfo } from '@/lib/storage';
 
 const prisma = new PrismaClient();
-
-// Check if we should use local storage (for development or when S3 not configured)
-const USE_LOCAL_STORAGE = process.env.USE_LOCAL_STORAGE === 'true' || !process.env.S3_ENDPOINT;
-
-// Local storage directory
-const LOCAL_STORAGE_DIR = path.join(process.cwd(), 'uploads');
-
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-// Helper function to ensure directory exists
-async function ensureDir(dir: string) {
-  try {
-    await fs.access(dir);
-  } catch {
-    await fs.mkdir(dir, { recursive: true });
-  }
-}
+// Log storage mode on startup
+console.log('[File Upload API] Storage:', getStorageInfo());
 
 const ALLOWED_TYPES = [
   'application/pdf',
@@ -82,28 +70,14 @@ export async function POST(request: NextRequest) {
     const fileId = uuidv4();
     const fileExtension = file.name.split('.').pop() || '';
     const uploaderId = userId || 'anonymous';
-    const storageKey = `uploads/${uploaderId}/${fileId}.${fileExtension}`;
+    const storageKey = `${uploaderId}/${fileId}.${fileExtension}`;
 
     // Read file buffer
     const buffer = Buffer.from(await file.arrayBuffer());
 
-    // Upload to storage
-    if (USE_LOCAL_STORAGE) {
-      // Use local filesystem storage
-      const localDir = path.join(LOCAL_STORAGE_DIR, uploaderId);
-      await ensureDir(localDir);
-      const filePath = path.join(localDir, `${fileId}.${fileExtension}`);
-      await fs.writeFile(filePath, buffer);
-      console.log('[File Upload API] File saved locally:', filePath);
-    } else {
-      // TODO: Implement S3 upload for production with S3
-      // For Railway without S3, use local storage (ephemeral)
-      const localDir = path.join(LOCAL_STORAGE_DIR, uploaderId);
-      await ensureDir(localDir);
-      const filePath = path.join(localDir, `${fileId}.${fileExtension}`);
-      await fs.writeFile(filePath, buffer);
-      console.log('[File Upload API] File saved to ephemeral storage:', filePath);
-    }
+    // Upload to storage (S3, database, or local based on configuration)
+    const storageResult = await uploadFile(buffer, storageKey, file.type);
+    console.log('[File Upload API] Storage result:', storageResult.mode, storageKey);
 
     // Ensure user exists (create anonymous user if needed)
     let user = await prisma.user.findUnique({ where: { id: uploaderId } });
@@ -144,6 +118,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create file record in PostgreSQL
+    // For database storage mode, include content; otherwise just metadata
     const fileRecord = await prisma.file.create({
       data: {
         id: fileId,
@@ -155,12 +130,15 @@ export async function POST(request: NextRequest) {
         storageKey: storageKey,
         status: 'READY',
         extractedText: extractedText,
+        // Only store content in DB if using database storage mode
+        // Type assertion needed until Prisma client is regenerated after migration
+        ...(storageResult.content ? { content: storageResult.content } : {}),
         userId: user.id,
         sessionId: validSessionId
-      }
+      } as any
     });
 
-    console.log('[File Upload API] Created file record:', fileRecord.id);
+    console.log('[File Upload API] Created file record:', fileRecord.id, 'Mode:', storageResult.mode);
 
     // Trigger AI service for text extraction (async, non-blocking)
     if (file.type !== 'text/plain') {

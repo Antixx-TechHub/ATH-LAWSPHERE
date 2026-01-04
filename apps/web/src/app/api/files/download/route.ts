@@ -1,18 +1,16 @@
 /**
- * File Download API Route - Serves files from local storage
+ * File Download API Route - Serves files for download
+ * Supports multiple storage backends via storage utility
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
+import { prisma } from '@/lib/prisma';
+import { downloadFile } from '@/lib/storage';
 
 // Force dynamic rendering - this route uses session/headers
 export const dynamic = 'force-dynamic';
-import { prisma } from '@/lib/prisma';
-import { promises as fs } from 'fs';
-import path from 'path';
-
-const LOCAL_STORAGE_DIR = path.join(process.cwd(), 'uploads');
 
 export async function GET(request: NextRequest) {
   try {
@@ -36,27 +34,27 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'File not found' }, { status: 404 });
     }
 
-    // Construct local file path from the stored storageKey
-    // storageKey is like "uploads/userId/fileId.ext"
-    const relativePath = file.storageKey.replace('uploads/', '');
-    const localPath = path.join(LOCAL_STORAGE_DIR, relativePath);
-
+    // Download file using storage utility
     try {
-      const fileBuffer = await fs.readFile(localPath);
+      // Type assertion for content field (added in migration)
+      const fileWithContent = file as typeof file & { content?: Buffer | null };
+      const buffer = await downloadFile(file.storageKey, fileWithContent.content);
       
-      return new NextResponse(fileBuffer, {
+      console.log('[File Download] Serving:', fileId, buffer.length, 'bytes');
+      
+      return new NextResponse(new Uint8Array(buffer), {
         headers: {
           'Content-Type': file.mimeType,
           'Content-Disposition': `attachment; filename="${file.filename}"`,
-          'Content-Length': file.size.toString(),
+          'Content-Length': buffer.length.toString(),
         },
       });
     } catch (err) {
-      console.error('File read error:', err);
-      return NextResponse.json({ error: 'File not found on disk' }, { status: 404 });
+      console.error('[File Download] Content not available:', fileId, err);
+      return NextResponse.json({ error: 'File content not available' }, { status: 404 });
     }
   } catch (error) {
-    console.error('File download error:', error);
+    console.error('[File Download] Error:', error);
     return NextResponse.json(
       { error: 'Failed to download file' },
       { status: 500 }

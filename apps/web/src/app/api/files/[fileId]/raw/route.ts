@@ -1,20 +1,21 @@
 /**
  * File Raw Content Route - Get raw file bytes by ID
  * Returns the actual file content (for images, PDFs, etc.)
+ * 
+ * Supports multiple storage backends via storage utility:
+ * - S3/R2 for production with object storage
+ * - Database storage for Railway
+ * - Local filesystem for development
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { promises as fs } from 'fs';
-import path from 'path';
+import { downloadFile } from '@/lib/storage';
 
 // Disable Next.js caching for this route
 export const dynamic = 'force-dynamic';
-
-const USE_LOCAL_STORAGE = process.env.USE_LOCAL_STORAGE === 'true' || !process.env.S3_ENDPOINT;
-const LOCAL_STORAGE_DIR = path.join(process.cwd(), 'uploads');
 
 export async function GET(
   request: NextRequest,
@@ -28,7 +29,7 @@ export async function GET(
 
     const { fileId } = params;
 
-    // Get file from database
+    // Get file metadata from database
     const file = await prisma.file.findUnique({
       where: { id: fileId },
     });
@@ -42,35 +43,32 @@ export async function GET(
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    if (USE_LOCAL_STORAGE) {
-      // Read from local storage
-      try {
-        const relativePath = file.storageKey.replace('uploads/', '');
-        const localPath = path.join(LOCAL_STORAGE_DIR, relativePath);
-        const fileBuffer = await fs.readFile(localPath);
+    // Download file content using storage utility
+    // Passes database content for database storage mode
+    try {
+      // Type assertion for content field (added in migration)
+      const fileWithContent = file as typeof file & { content?: Buffer | null };
+      const buffer = await downloadFile(file.storageKey, fileWithContent.content);
+      
+      console.log('[File Raw] Serving:', fileId, buffer.length, 'bytes');
 
-        return new NextResponse(fileBuffer, {
-          headers: {
-            'Content-Type': file.mimeType,
-            'Content-Disposition': `inline; filename="${file.filename}"`,
-            'Content-Length': file.size.toString(),
-            'Cache-Control': 'public, max-age=3600',
-          },
-        });
-      } catch (err) {
-        console.error('File read error:', err);
-        return NextResponse.json({ error: 'File not found on disk' }, { status: 404 });
-      }
-    } else {
-      // For S3, redirect to signed URL
-      // This would need S3 client setup
+      return new NextResponse(new Uint8Array(buffer), {
+        headers: {
+          'Content-Type': file.mimeType,
+          'Content-Disposition': `inline; filename="${file.filename}"`,
+          'Content-Length': buffer.length.toString(),
+          'Cache-Control': 'public, max-age=3600',
+        },
+      });
+    } catch (err) {
+      console.error('[File Raw] Content not available:', fileId, err);
       return NextResponse.json(
-        { error: 'S3 storage not configured' },
-        { status: 501 }
+        { error: 'File content not available' },
+        { status: 404 }
       );
     }
   } catch (error) {
-    console.error('File raw error:', error);
+    console.error('[File Raw] Error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch file' },
       { status: 500 }

@@ -129,9 +129,9 @@ async function getSessionFiles(sessionId: string) {
     
     if (!session) {
       console.log('[Sessions API] Session not found:', sessionId);
-      // Return empty array instead of 404 for non-existent sessions
+      // Return empty files object instead of 404 for non-existent sessions
       // This handles "local-*" sessions gracefully
-      return NextResponse.json([]);
+      return NextResponse.json({ files: [] });
     }
     
     const files = await prisma.file.findMany({
@@ -139,21 +139,30 @@ async function getSessionFiles(sessionId: string) {
       orderBy: { createdAt: 'desc' }
     });
     
-    // Transform to expected format
+    console.log('[Sessions API] Found', files.length, 'files for session', sessionId);
+    
+    // Transform to expected format - match what frontend expects
+    // Frontend expects: id, name, size, mime_type, status, uploaded_at, is_sensitive, pii_detected
     const result = files.map(f => ({
       id: f.id,
+      name: f.originalName || f.filename,  // Frontend uses 'name'
       filename: f.filename,
       original_name: f.originalName,
+      mime_type: f.mimeType,  // Frontend uses 'mime_type'
       content_type: f.mimeType,
       size: f.size,
-      status: f.status,
+      status: f.status?.toLowerCase() || 'ready',  // Ensure lowercase
       session_id: f.sessionId,
       user_id: f.userId,
+      uploaded_at: f.createdAt.toISOString(),  // Frontend uses 'uploaded_at'
       created_at: f.createdAt.toISOString(),
-      updated_at: f.updatedAt.toISOString()
+      updated_at: f.updatedAt.toISOString(),
+      is_sensitive: false,
+      pii_detected: false
     }));
     
-    return NextResponse.json(result);
+    // Return wrapped in { files: [...] } as expected by frontend
+    return NextResponse.json({ files: result });
   } catch (error) {
     console.error('[Sessions API] getSessionFiles error:', error);
     return NextResponse.json(

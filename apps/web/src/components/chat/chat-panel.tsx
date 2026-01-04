@@ -45,6 +45,7 @@ interface AttachedDocument {
 interface ChatPanelProps {
   sessionId: string;
   onSessionUpdate?: () => void;
+  refreshSignal?: number; // Increment to trigger reload of session files
 }
 
 interface TrustInfo {
@@ -98,7 +99,7 @@ const initialMessages: Message[] = [
   },
 ];
 
-export function ChatPanel({ sessionId, onSessionUpdate }: ChatPanelProps) {
+export function ChatPanel({ sessionId, onSessionUpdate, refreshSignal }: ChatPanelProps) {
   const { data: authSession } = useSession();
   const userId = authSession?.user?.id || authSession?.user?.email;
   
@@ -110,6 +111,35 @@ export function ChatPanel({ sessionId, onSessionUpdate }: ChatPanelProps) {
   const [attachedDocs, setAttachedDocs] = useState<AttachedDocument[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Function to load files from session context
+  const loadSessionFiles = async () => {
+    if (!sessionId) return;
+    try {
+      const ctx = await aiClient.getSessionContext(sessionId);
+      if (ctx.files && ctx.files.length > 0) {
+        const restoredDocs: AttachedDocument[] = ctx.files
+          .filter((f: any) => f.extracted_text && f.status === 'ready')
+          .map((f: any) => ({
+            id: f.id,
+            name: f.name,
+            content: f.extracted_text,
+            size: f.size || 0,
+          }));
+        console.log('[Chat] Loaded', restoredDocs.length, 'files from session (refreshSignal:', refreshSignal, ')');
+        setAttachedDocs(restoredDocs);
+      }
+    } catch (err) {
+      console.error('Failed to load session files', err);
+    }
+  };
+  
+  // Reload files when refreshSignal changes (e.g., after file upload in Files panel)
+  useEffect(() => {
+    if (refreshSignal && refreshSignal > 0) {
+      loadSessionFiles();
+    }
+  }, [refreshSignal]);
 
   // Load persisted context when session changes
   useEffect(() => {
@@ -136,14 +166,30 @@ export function ChatPanel({ sessionId, onSessionUpdate }: ChatPanelProps) {
         } else {
           setSessionCost({ totalInr: 0, savedInr: 0, queries: 0 });
         }
+        
+        // Restore previously uploaded files as attached documents for chat context
+        if (ctx.files && ctx.files.length > 0) {
+          const restoredDocs: AttachedDocument[] = ctx.files
+            .filter((f: any) => f.extracted_text && f.status === 'ready')
+            .map((f: any) => ({
+              id: f.id,
+              name: f.name,
+              content: f.extracted_text,
+              size: f.size || 0,
+            }));
+          console.log('[Chat] Restored', restoredDocs.length, 'files from session');
+          setAttachedDocs(restoredDocs);
+        } else {
+          setAttachedDocs([]);
+        }
       } catch (err) {
         console.error("Failed to load session context", err);
         setMessages(initialMessages);
         setSessionCost({ totalInr: 0, savedInr: 0, queries: 0 });
+        setAttachedDocs([]);
       }
     };
     loadContext();
-    setAttachedDocs([]);
   }, [sessionId]);
 
   const scrollToBottom = () => {

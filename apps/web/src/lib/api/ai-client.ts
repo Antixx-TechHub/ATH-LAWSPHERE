@@ -272,7 +272,13 @@ class AIClient {
     });
   }
 
-  async getSessionContext(sessionId: string): Promise<{ messages: any[]; files: any[]; notes: any[] }> {
+  async getSessionContext(sessionId: string): Promise<{ 
+    messages: any[]; 
+    files: any[]; 
+    notes: any[];
+    session_cost?: { totalInr: number; savedInr: number; queries: number };
+    models_used?: any[];
+  }> {
     return this.request(`/api/sessions/${sessionId}/context`);
   }
 

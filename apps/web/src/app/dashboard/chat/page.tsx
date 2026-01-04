@@ -206,7 +206,11 @@ export default function ChatPage() {
           )}
         >
           {sessionId ? (
-            <ChatPanel sessionId={sessionId} onSessionUpdate={() => loadSessionData(sessionId)} />
+            <ChatPanel 
+              sessionId={sessionId} 
+              onSessionUpdate={() => loadSessionData(sessionId)} 
+              refreshSignal={refreshSignal}
+            />
           ) : (
             <div className="h-full flex items-center justify-center bg-white dark:bg-neutral-900 rounded-lg border border-neutral-200 dark:border-neutral-800">
               <div className="text-center">

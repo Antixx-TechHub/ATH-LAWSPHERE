@@ -135,6 +135,7 @@ async def fetch_context(session: AsyncSession, session_id: str, limit_messages: 
                 "uploaded_at": f.uploaded_at,
                 "is_sensitive": f.is_sensitive,
                 "pii_detected": f.pii_detected,
+                "extracted_text": f.extracted_text,  # Include file content for chat context
             }
             for f in files
         ],

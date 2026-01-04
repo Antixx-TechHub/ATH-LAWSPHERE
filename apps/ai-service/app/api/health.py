@@ -70,3 +70,33 @@ async def ollama_status():
         "model_count": len(models),
         "recommendation": "Ollama is ready for local inference" if is_healthy else "Start Ollama with 'ollama serve'"
     }
+
+
+@router.post("/db/reset")
+async def reset_database():
+    """Reset/recreate database tables to fix corruption issues."""
+    from app.db import engine, Base
+    from app import db_models  # noqa: F401
+    import structlog
+    
+    logger = structlog.get_logger()
+    
+    try:
+        async with engine.begin() as conn:
+            # Drop all tables and recreate
+            await conn.run_sync(Base.metadata.drop_all)
+            await conn.run_sync(Base.metadata.create_all)
+        
+        logger.info("database_reset_complete")
+        return {
+            "status": "success",
+            "message": "Database tables recreated successfully",
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        logger.error("database_reset_failed", error=str(e))
+        return {
+            "status": "error",
+            "message": str(e),
+            "timestamp": datetime.utcnow().isoformat()
+        }

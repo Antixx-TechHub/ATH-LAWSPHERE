@@ -7,26 +7,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { promises as fs } from 'fs';
-import path from 'path';
+import { downloadFile } from '@/lib/storage';
 
 // Disable Next.js caching for this route
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
-
-const USE_LOCAL_STORAGE = process.env.USE_LOCAL_STORAGE === 'true' || !process.env.S3_ENDPOINT;
-const LOCAL_STORAGE_DIR = path.join(process.cwd(), 'uploads');
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { fileId: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     const { fileId } = params;
 
     // Get file from database
@@ -38,22 +29,35 @@ export async function GET(
       return NextResponse.json({ error: 'File not found' }, { status: 404 });
     }
 
-    // Check ownership
-    if (file.userId !== session.user.id) {
+    // Check authorization:
+    // - If user is logged in, they must own the file
+    // - If file belongs to "anonymous", allow access (public demo mode)
+    const session = await getServerSession(authOptions);
+    const isOwner = session?.user && file.userId === session.user.id;
+    const isAnonymousFile = file.userId === 'anonymous';
+    
+    if (!isOwner && !isAnonymousFile) {
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 
-    // For text files, try to read content from local storage
+    // Try to get content from various sources
     let content = file.extractedText || '';
     
-    if (!content && USE_LOCAL_STORAGE && file.mimeType === 'text/plain') {
+    // If no extracted text, try to read from storage (for text files)
+    if (!content && file.mimeType?.startsWith('text/')) {
       try {
-        const relativePath = file.storageKey.replace('uploads/', '');
-        const localPath = path.join(LOCAL_STORAGE_DIR, relativePath);
-        content = await fs.readFile(localPath, 'utf-8');
+        const fileBuffer = await downloadFile(file.storageKey);
+        if (fileBuffer) {
+          content = fileBuffer.toString('utf-8');
+        }
       } catch (err) {
-        console.error('Failed to read file content:', err);
+        console.error('Failed to read file content from storage:', err);
       }
+    }
+    
+    // If still no content and we have file content in database
+    if (!content && file.content) {
+      content = file.content.toString('utf-8');
     }
 
     // Return file metadata and content

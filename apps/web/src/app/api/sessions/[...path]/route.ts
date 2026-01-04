@@ -240,11 +240,11 @@ async function getSessionFiles(sessionId: string) {
 }
 
 /**
- * Get session context - files and extracted text for AI context
+ * Get session context - files, extracted text, AND messages for AI context
  */
 async function getSessionContext(sessionId: string) {
   try {
-    // Get session with files
+    // Get session with files from PostgreSQL
     const session = await prisma.chatSession.findUnique({
       where: { id: sessionId },
       include: {
@@ -261,10 +261,26 @@ async function getSessionContext(sessionId: string) {
       }
     });
     
+    // Also fetch messages from AI service
+    let messages: any[] = [];
+    try {
+      const aiResponse = await fetch(`${AI_SERVICE_URL}/api/sessions/${sessionId}/context`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      if (aiResponse.ok) {
+        const aiData = await aiResponse.json();
+        messages = aiData.messages || [];
+      }
+    } catch (aiErr) {
+      console.warn('[Sessions API] Could not fetch messages from AI service:', aiErr);
+    }
+    
     if (!session) {
-      // Return empty context for non-existent sessions
+      // Return messages from AI service even if no session in web DB
       return NextResponse.json({
         session_id: sessionId,
+        messages: messages,
         files: [],
         context_text: '',
         file_count: 0
@@ -281,6 +297,7 @@ async function getSessionContext(sessionId: string) {
     
     return NextResponse.json({
       session_id: sessionId,
+      messages: messages,
       files: session.files.map(f => ({
         id: f.id,
         filename: f.filename,

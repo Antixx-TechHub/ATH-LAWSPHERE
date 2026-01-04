@@ -239,8 +239,13 @@ async def create_trust_chat_completion(request: TrustChatRequest, db: AsyncSessi
         
         # DEBUG: Log incoming request
         print(f"[TRUST_CHAT] Received request with {len(request.messages)} messages")
+        print(f"[TRUST_CHAT] file_attached={request.file_attached}")
         for i, m in enumerate(request.messages):
             print(f"[TRUST_CHAT] Message {i}: role={m.role.value}, content_len={len(m.content)}")
+            # Log first 500 chars of content to see if document is included
+            if m.role == MessageRole.USER:
+                preview = m.content[:500] if len(m.content) > 500 else m.content
+                print(f"[TRUST_CHAT] User message preview: {preview}")
         
         # Get user's message content for routing analysis
         user_content = " ".join([

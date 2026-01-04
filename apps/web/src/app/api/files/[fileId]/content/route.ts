@@ -19,6 +19,7 @@ export async function GET(
 ) {
   try {
     const { fileId } = params;
+    console.log('[File Content API] Fetching file:', fileId);
 
     // Get file from database
     const file = await prisma.file.findUnique({
@@ -26,17 +27,27 @@ export async function GET(
     });
 
     if (!file) {
+      console.log('[File Content API] File not found:', fileId);
       return NextResponse.json({ error: 'File not found' }, { status: 404 });
     }
 
+    console.log('[File Content API] File found, userId:', file.userId);
+
     // Check authorization:
     // - If user is logged in, they must own the file
-    // - If file belongs to "anonymous", allow access (public demo mode)
+    // - If file belongs to "anonymous" user, allow access (public demo mode)
+    // - For demo purposes, also allow access if no session (anonymous browsing)
     const session = await getServerSession(authOptions);
-    const isOwner = session?.user && file.userId === session.user.id;
-    const isAnonymousFile = file.userId === 'anonymous';
+    const isLoggedIn = !!session?.user;
+    const isOwner = isLoggedIn && file.userId === session.user.id;
+    const isAnonymousFile = file.userId === 'anonymous' || !file.userId;
+    const allowAnonymousAccess = !isLoggedIn && isAnonymousFile;
     
+    console.log('[File Content API] Auth check:', { isLoggedIn, isOwner, isAnonymousFile, allowAnonymousAccess });
+    
+    // Allow access if: user owns the file, OR file is anonymous and user is browsing anonymously
     if (!isOwner && !isAnonymousFile) {
+      console.log('[File Content API] Access denied for file:', fileId);
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
 

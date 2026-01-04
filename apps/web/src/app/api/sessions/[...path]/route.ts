@@ -278,8 +278,20 @@ async function proxyToAIService(
     }
     
     const response = await fetch(url, options);
-    const data = await response.json();
-    return NextResponse.json(data, { status: response.status });
+    
+    // Try to parse as JSON, but handle non-JSON responses gracefully
+    const text = await response.text();
+    try {
+      const data = JSON.parse(text);
+      return NextResponse.json(data, { status: response.status });
+    } catch {
+      // AI service returned non-JSON (e.g., "Internal Server Error")
+      console.error('[Sessions API] AI service returned non-JSON:', text.substring(0, 100));
+      return NextResponse.json(
+        { error: 'AI service error', details: text.substring(0, 200) },
+        { status: response.status >= 400 ? response.status : 502 }
+      );
+    }
   } catch (error) {
     console.error('[Sessions API] Proxy error:', error);
     return NextResponse.json(

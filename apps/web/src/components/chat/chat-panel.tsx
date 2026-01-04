@@ -31,6 +31,7 @@ import {
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
 import { TrustBadge } from "./trust-badge";
+import { useSession } from "next-auth/react";
 import { aiClient } from "@/lib/api/ai-client";
 
 // Attached document interface
@@ -98,6 +99,9 @@ const initialMessages: Message[] = [
 ];
 
 export function ChatPanel({ sessionId, onSessionUpdate }: ChatPanelProps) {
+  const { data: authSession } = useSession();
+  const userId = authSession?.user?.id || authSession?.user?.email;
+  
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [input, setInput] = useState("");
   const [selectedModel, setSelectedModel] = useState("auto");
@@ -322,6 +326,7 @@ USER QUESTION: ${input}`;
         model: selectedModel,
         temperature: 0.7,
         session_id: sessionId,
+        user_id: userId,
         document_attached: attachedDocs.length > 0,
       });
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -33,6 +34,8 @@ interface Session {
 
 export default function SessionsPage() {
   const router = useRouter();
+  const { data: authSession } = useSession();
+  const userId = authSession?.user?.id || authSession?.user?.email;
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,14 +45,14 @@ export default function SessionsPage() {
   const editInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    loadSessions();
-  }, []);
+    if (userId) loadSessions();
+  }, [userId]);
 
   const loadSessions = async () => {
     try {
       setLoading(true);
       setError(null);
-      const list = await aiClient.listSessions();
+      const list = await aiClient.listSessions(userId);
       setSessions(list);
     } catch (err) {
       console.error("Failed to load sessions", err);
@@ -62,7 +65,7 @@ export default function SessionsPage() {
   const handleNewSession = async () => {
     try {
       // Don't pass title - API will generate default name with date
-      const created = await aiClient.createSession();
+      const created = await aiClient.createSession(undefined, userId);
       // Navigate to chat with this session
       router.push(`/dashboard/chat?session=${created.id}`);
     } catch (err) {

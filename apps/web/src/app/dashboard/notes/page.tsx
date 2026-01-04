@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -37,6 +38,8 @@ interface Note {
 
 export default function NotesPage() {
   const router = useRouter();
+  const { data: authSession } = useSession();
+  const userId = authSession?.user?.id || authSession?.user?.email;
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -44,8 +47,8 @@ export default function NotesPage() {
   const [selectedNote, setSelectedNote] = useState<Note | null>(null);
 
   useEffect(() => {
-    loadNotes();
-  }, []);
+    if (userId) loadNotes();
+  }, [userId]);
 
   const loadNotes = async () => {
     try {
@@ -53,7 +56,7 @@ export default function NotesPage() {
       setError(null);
       
       // Fetch all sessions and their notes
-      const sessions = await aiClient.listSessions();
+      const sessions = await aiClient.listSessions(userId);
       const allNotes: Note[] = [];
       
       for (const session of sessions) {

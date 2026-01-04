@@ -23,6 +23,7 @@ interface ChatRequest {
   temperature?: number;
   max_tokens?: number;
   session_id?: string;
+  user_id?: string;
   document_attached?: boolean;
 }
 

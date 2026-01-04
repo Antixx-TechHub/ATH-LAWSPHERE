@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { ChatPanel } from "@/components/chat/chat-panel";
 import { FilesPanel } from "@/components/chat/files-panel";
 import { NotesPanel } from "@/components/chat/notes-panel";
@@ -23,6 +24,8 @@ type ActivePanel = "chat" | "files" | "notes";
 export default function ChatPage() {
   const searchParams = useSearchParams();
   const sessionParam = searchParams.get("session");
+  const { data: authSession } = useSession();
+  const userId = authSession?.user?.id || authSession?.user?.email;
   
   const [activePanel, setActivePanel] = useState<ActivePanel>("chat");
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
@@ -82,6 +85,9 @@ export default function ChatPage() {
   };
 
   useEffect(() => {
+    // Wait for auth to be ready before initializing
+    if (!userId) return;
+    
     const init = async () => {
       try {
         setLoading(true);
@@ -94,7 +100,7 @@ export default function ChatPage() {
           await loadSessionData(sessionParam);
         } else {
           // Don't pass title - API will generate default name with date
-          const created = await aiClient.createSession();
+          const created = await aiClient.createSession(undefined, userId);
           console.log("[Chat] Created session:", created);
           if (created && created.id) {
             setSessionId(created.id);
@@ -113,7 +119,7 @@ export default function ChatPage() {
       }
     };
     init();
-  }, [sessionParam]);
+  }, [sessionParam, userId]);
 
   if (loading) {
     return (

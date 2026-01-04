@@ -60,6 +60,26 @@ export async function POST(
   return proxyToAIService(request, 'POST', path);
 }
 
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { path: string[] } }
+) {
+  const path = params.path;
+  console.log('[Sessions API] PATCH path:', path);
+  
+  // Handle /api/sessions/{sessionId} - rename session
+  if (path.length === 1) {
+    const sessionId = path[0];
+    return renameSession(request, sessionId);
+  }
+  
+  // Unknown PATCH path
+  return NextResponse.json(
+    { error: 'Not found' },
+    { status: 404 }
+  );
+}
+
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { path: string[] } }
@@ -75,6 +95,53 @@ export async function DELETE(
   
   // Proxy other deletes to AI service
   return proxyToAIService(request, 'DELETE', path);
+}
+
+/**
+ * Rename a session
+ */
+async function renameSession(request: NextRequest, sessionId: string) {
+  try {
+    const body = await request.json();
+    const { title } = body;
+    
+    if (!title || typeof title !== 'string' || title.trim().length === 0) {
+      return NextResponse.json(
+        { error: 'Title is required and must be a non-empty string' },
+        { status: 400 }
+      );
+    }
+    
+    const session = await prisma.chatSession.update({
+      where: { id: sessionId },
+      data: { 
+        name: title.trim(),
+        updatedAt: new Date()
+      }
+    });
+    
+    console.log('[Sessions API] Renamed session:', sessionId, 'to:', title.trim());
+    
+    return NextResponse.json({
+      id: session.id,
+      title: session.name,
+      user_id: session.createdById,
+      created_at: session.createdAt.toISOString(),
+      updated_at: session.updatedAt.toISOString()
+    });
+  } catch (error: any) {
+    console.error('[Sessions API] renameSession error:', error);
+    if (error.code === 'P2025') {
+      return NextResponse.json(
+        { error: 'Session not found' },
+        { status: 404 }
+      );
+    }
+    return NextResponse.json(
+      { error: 'Failed to rename session', details: String(error) },
+      { status: 500 }
+    );
+  }
 }
 
 /**

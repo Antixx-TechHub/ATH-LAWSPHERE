@@ -62,6 +62,21 @@ export async function GET(request: NextRequest) {
 /**
  * POST /api/sessions - Create a new chat session
  */
+/**
+ * Generate a default session name with date
+ * Format: "Session - Jan 4, 2026"
+ */
+function generateDefaultSessionName(): string {
+  const now = new Date();
+  const options: Intl.DateTimeFormatOptions = { 
+    month: 'short', 
+    day: 'numeric', 
+    year: 'numeric' 
+  };
+  const dateStr = now.toLocaleDateString('en-US', options);
+  return `Session - ${dateStr}`;
+}
+
 export async function POST(request: NextRequest) {
   console.log('[Sessions API] POST - Creating new session');
   
@@ -71,7 +86,8 @@ export async function POST(request: NextRequest) {
     
     // Use a default user ID if not provided (for anonymous sessions)
     const userId = user_id || 'anonymous';
-    const sessionTitle = title || 'New Chat Session';
+    // Generate meaningful default name with date if not provided
+    const sessionTitle = title || generateDefaultSessionName();
     
     // First, ensure the user exists (create if needed for anonymous)
     let user = await prisma.user.findUnique({

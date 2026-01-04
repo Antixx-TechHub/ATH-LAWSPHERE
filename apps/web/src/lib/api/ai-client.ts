@@ -258,6 +258,19 @@ class AIClient {
     return this.request(`/api/sessions${query}`);
   }
 
+  async renameSession(sessionId: string, title: string): Promise<{ id: string; title: string }> {
+    return this.request(`/api/sessions/${sessionId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ title }),
+    });
+  }
+
+  async deleteSession(sessionId: string): Promise<{ status: string }> {
+    return this.request(`/api/sessions/${sessionId}`, {
+      method: 'DELETE',
+    });
+  }
+
   async getSessionContext(sessionId: string): Promise<{ messages: any[]; files: any[]; notes: any[] }> {
     return this.request(`/api/sessions/${sessionId}/context`);
   }

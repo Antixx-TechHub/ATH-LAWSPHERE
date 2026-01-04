@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,9 @@ import {
   Trash2,
   Clock,
   MoreVertical,
+  Pencil,
+  Check,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { aiClient } from "@/lib/api/ai-client";
@@ -34,6 +37,9 @@ export default function SessionsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState("");
+  const editInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadSessions();
@@ -55,7 +61,8 @@ export default function SessionsPage() {
 
   const handleNewSession = async () => {
     try {
-      const created = await aiClient.createSession("New Session");
+      // Don't pass title - API will generate default name with date
+      const created = await aiClient.createSession();
       // Navigate to chat with this session
       router.push(`/dashboard/chat?session=${created.id}`);
     } catch (err) {
@@ -69,8 +76,51 @@ export default function SessionsPage() {
 
   const handleDeleteSession = async (sessionId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    // TODO: Implement delete session API
-    setSessions(sessions.filter(s => s.id !== sessionId));
+    try {
+      // Call delete API
+      await aiClient.deleteSession(sessionId);
+      setSessions(sessions.filter(s => s.id !== sessionId));
+    } catch (err) {
+      console.error("Failed to delete session", err);
+    }
+  };
+
+  const handleStartRename = (session: Session, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingSessionId(session.id);
+    setEditingTitle(session.title || "");
+    // Focus input after state update
+    setTimeout(() => editInputRef.current?.focus(), 50);
+  };
+
+  const handleCancelRename = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingSessionId(null);
+    setEditingTitle("");
+  };
+
+  const handleSaveRename = async (sessionId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!editingTitle.trim()) return;
+    
+    try {
+      await aiClient.renameSession(sessionId, editingTitle.trim());
+      setSessions(sessions.map(s => 
+        s.id === sessionId ? { ...s, title: editingTitle.trim() } : s
+      ));
+      setEditingSessionId(null);
+      setEditingTitle("");
+    } catch (err) {
+      console.error("Failed to rename session", err);
+    }
+  };
+
+  const handleRenameKeyDown = (sessionId: string, e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSaveRename(sessionId, e as any);
+    } else if (e.key === 'Escape') {
+      handleCancelRename(e as any);
+    }
   };
 
   const filteredSessions = sessions.filter(session =>
@@ -162,35 +212,71 @@ export default function SessionsPage() {
           {filteredSessions.map((session) => (
             <div
               key={session.id}
-              onClick={() => handleOpenSession(session.id)}
+              onClick={() => editingSessionId !== session.id && handleOpenSession(session.id)}
               className={cn(
                 "p-4 bg-white dark:bg-neutral-900 rounded-lg border border-neutral-200 dark:border-neutral-800",
                 "hover:border-primary-300 dark:hover:border-primary-700 hover:shadow-md",
-                "cursor-pointer transition-all duration-200"
+                "cursor-pointer transition-all duration-200",
+                editingSessionId === session.id && "border-primary-500 ring-1 ring-primary-500"
               )}
             >
               <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 bg-primary-50 dark:bg-primary-900/30 rounded-lg">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <div className="p-2 bg-primary-50 dark:bg-primary-900/30 rounded-lg flex-shrink-0">
                     <MessageSquare className="h-4 w-4 text-primary-600" />
                   </div>
-                  <h3 className="font-medium text-neutral-900 dark:text-white truncate max-w-[180px]">
-                    {session.title || "Untitled Session"}
-                  </h3>
+                  {editingSessionId === session.id ? (
+                    <div className="flex items-center gap-1 flex-1" onClick={(e) => e.stopPropagation()}>
+                      <Input
+                        ref={editInputRef}
+                        value={editingTitle}
+                        onChange={(e) => setEditingTitle(e.target.value)}
+                        onKeyDown={(e) => handleRenameKeyDown(session.id, e)}
+                        className="h-8 text-sm"
+                        placeholder="Session name..."
+                      />
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-7 w-7 flex-shrink-0"
+                        onClick={(e) => handleSaveRename(session.id, e)}
+                      >
+                        <Check className="h-4 w-4 text-green-600" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-7 w-7 flex-shrink-0"
+                        onClick={handleCancelRename}
+                      >
+                        <X className="h-4 w-4 text-neutral-500" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <h3 className="font-medium text-neutral-900 dark:text-white truncate max-w-[180px]">
+                      {session.title || "Untitled Session"}
+                    </h3>
+                  )}
                 </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={(e) => handleDeleteSession(session.id, e as any)}>
-                      <Trash2 className="h-4 w-4 mr-2 text-red-500" />
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                {editingSessionId !== session.id && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={(e) => handleStartRename(session, e as any)}>
+                        <Pencil className="h-4 w-4 mr-2" />
+                        Rename
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={(e) => handleDeleteSession(session.id, e as any)}>
+                        <Trash2 className="h-4 w-4 mr-2 text-red-500" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               </div>
 
               {session.last_message_preview && (

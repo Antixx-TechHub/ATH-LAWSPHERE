@@ -93,7 +93,8 @@ export default function ChatPage() {
           // Fetch session files and chat data
           await loadSessionData(sessionParam);
         } else {
-          const created = await aiClient.createSession("New Session");
+          // Don't pass title - API will generate default name with date
+          const created = await aiClient.createSession();
           console.log("[Chat] Created session:", created);
           if (created && created.id) {
             setSessionId(created.id);

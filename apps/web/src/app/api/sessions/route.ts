@@ -63,18 +63,25 @@ export async function GET(request: NextRequest) {
  * POST /api/sessions - Create a new chat session
  */
 /**
- * Generate a default session name with date
- * Format: "Session - Jan 4, 2026"
+ * Generate a default session name with date and time
+ * Format: "Session - Jan 4, 2026 at 3:45:12 PM"
  */
 function generateDefaultSessionName(): string {
   const now = new Date();
-  const options: Intl.DateTimeFormatOptions = { 
+  const dateOptions: Intl.DateTimeFormatOptions = { 
     month: 'short', 
     day: 'numeric', 
     year: 'numeric' 
   };
-  const dateStr = now.toLocaleDateString('en-US', options);
-  return `Session - ${dateStr}`;
+  const timeOptions: Intl.DateTimeFormatOptions = {
+    hour: 'numeric',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true
+  };
+  const dateStr = now.toLocaleDateString('en-US', dateOptions);
+  const timeStr = now.toLocaleTimeString('en-US', timeOptions);
+  return `Session - ${dateStr} at ${timeStr}`;
 }
 
 export async function POST(request: NextRequest) {

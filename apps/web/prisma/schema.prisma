@@ -340,6 +340,49 @@ model Notification {
   @@index([read])
 }
 
+// ==================== CHAT ANALYTICS ====================
+
+model ChatAnalytics {
+  id              String   @id @default(cuid())
+  userId          String?  // null for anonymous users
+  sessionId       String?
+  
+  // Message details
+  messageId       String?
+  role            String   // user or assistant
+  
+  // Model & Routing
+  model           String
+  modelProvider   String   // openai, anthropic, groq, ollama, etc.
+  isLocal         Boolean  @default(false)
+  sensitivityLevel String? // public, internal, confidential, restricted
+  piiDetected     Boolean  @default(false)
+  
+  // Token usage
+  inputTokens     Int      @default(0)
+  outputTokens    Int      @default(0)
+  
+  // Cost tracking (in USD)
+  actualCost      Float    @default(0)
+  cloudCost       Float    @default(0) // What it would have cost on cloud
+  costSaved       Float    @default(0) // cloudCost - actualCost
+  
+  // Performance
+  latencyMs       Int      @default(0)
+  routingTimeMs   Float    @default(0)
+  
+  // Audit
+  auditId         String?
+  
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
+  @@index([sessionId])
+  @@index([model])
+  @@index([modelProvider])
+  @@index([createdAt])
+}
+
 // ==================== AUDIT LOGS ====================
 
 model AuditLog {

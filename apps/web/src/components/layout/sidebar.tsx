@@ -15,6 +15,7 @@ import {
   ChevronRight,
   Users,
   ShieldCheck,
+  BarChart3,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -29,6 +30,7 @@ const navItems = [
   { href: "/dashboard/files", label: "Library", icon: Library },
   { href: "/dashboard/notes", label: "Notes", icon: StickyNote },
   { href: "/dashboard/sessions", label: "Sessions", icon: Users },
+  { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
 ];
 
 const bottomNavItems = [

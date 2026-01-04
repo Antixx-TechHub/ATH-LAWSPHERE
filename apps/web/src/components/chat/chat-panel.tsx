@@ -348,6 +348,34 @@ USER QUESTION: ${input}`;
           queries: prev.queries + 1,
         }));
       }
+      
+      // Record analytics for cost tracking
+      try {
+        await fetch('/api/analytics', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId,
+            messageId: aiMessage.id,
+            role: 'assistant',
+            model: data.model,
+            modelProvider: data.trust?.model_provider || 'unknown',
+            isLocal: data.trust?.is_local || false,
+            sensitivityLevel: data.trust?.sensitivity_level,
+            piiDetected: data.trust?.pii_detected || false,
+            inputTokens: 0, // Not returned by API yet
+            outputTokens: 0,
+            actualCost: data.cost?.estimated_cost_usd || 0,
+            cloudCost: (data.cost?.estimated_cost_usd || 0) + (data.cost?.saved_vs_cloud_usd || 0),
+            costSaved: data.cost?.saved_vs_cloud_usd || 0,
+            latencyMs: data.latency_ms || 0,
+            routingTimeMs: data.routing_time_ms || 0,
+            auditId: data.trust?.audit_id,
+          }),
+        });
+      } catch (analyticsErr) {
+        console.warn('Failed to record analytics:', analyticsErr);
+      }
     } catch (error) {
       console.error('Chat error:', error);
       const errorMessage: Message = {

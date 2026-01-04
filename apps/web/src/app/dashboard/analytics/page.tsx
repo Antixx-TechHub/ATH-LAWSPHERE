@@ -14,8 +14,19 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   RefreshCw,
+  Globe,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+
+// Currency configurations
+type Currency = "USD" | "INR" | "EUR" | "GBP";
+
+const CURRENCIES: Record<Currency, { symbol: string; name: string; rate: number }> = {
+  USD: { symbol: "$", name: "US Dollar", rate: 1 },
+  INR: { symbol: "₹", name: "Indian Rupee", rate: 83.5 },
+  EUR: { symbol: "€", name: "Euro", rate: 0.92 },
+  GBP: { symbol: "£", name: "British Pound", rate: 0.79 },
+};
 
 interface AnalyticsData {
   summary: {
@@ -61,6 +72,7 @@ export default function AnalyticsPage() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [range, setRange] = useState<TimeRange>("month");
+  const [currency, setCurrency] = useState<Currency>("USD");
 
   const fetchAnalytics = async () => {
     setLoading(true);
@@ -81,14 +93,23 @@ export default function AnalyticsPage() {
     fetchAnalytics();
   }, [range]);
 
-  const formatCost = (cost: number) => {
-    if (cost < 0.01) return `$${(cost * 100).toFixed(4)}¢`;
-    return `$${cost.toFixed(4)}`;
+  // Convert USD to selected currency
+  const convertCurrency = (usdAmount: number): number => {
+    return usdAmount * CURRENCIES[currency].rate;
   };
 
-  const formatCostINR = (cost: number) => {
-    const inr = cost * 83; // Approximate USD to INR
-    return `₹${inr.toFixed(2)}`;
+  const formatCost = (cost: number) => {
+    const converted = convertCurrency(cost);
+    const { symbol } = CURRENCIES[currency];
+    
+    if (currency === "USD") {
+      if (converted < 0.01) return `${(converted * 100).toFixed(4)}¢`;
+      return `${symbol}${converted.toFixed(4)}`;
+    }
+    
+    // For other currencies, show 2-4 decimal places based on amount
+    if (converted < 1) return `${symbol}${converted.toFixed(4)}`;
+    return `${symbol}${converted.toFixed(2)}`;
   };
 
   const getRangeLabel = (r: TimeRange) => {
@@ -152,6 +173,25 @@ export default function AnalyticsPage() {
                 </button>
               ))}
             </div>
+            
+            {/* Currency Selector */}
+            <div className="flex bg-white dark:bg-neutral-800 rounded-lg p-1 shadow-sm">
+              {(Object.keys(CURRENCIES) as Currency[]).map((c) => (
+                <button
+                  key={c}
+                  onClick={() => setCurrency(c)}
+                  className={`px-3 py-2 text-sm font-medium rounded-md transition-all ${
+                    currency === c
+                      ? "bg-accent-500 text-white"
+                      : "text-neutral-600 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-700"
+                  }`}
+                  title={CURRENCIES[c].name}
+                >
+                  {CURRENCIES[c].symbol} {c}
+                </button>
+              ))}
+            </div>
+            
             <Button variant="outline" size="icon" onClick={fetchAnalytics} disabled={loading}>
               <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             </Button>
@@ -193,14 +233,14 @@ export default function AnalyticsPage() {
               <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
                 <DollarSign className="h-5 w-5 text-green-600 dark:text-green-400" />
               </div>
-              <span className="text-sm text-neutral-500">Total Cost</span>
+              <span className="text-sm text-neutral-500">Total Cost ({currency})</span>
             </div>
             <div className="mt-4">
               <div className="text-3xl font-bold text-neutral-900 dark:text-white">
                 {formatCost(data?.summary.totalCost || 0)}
               </div>
               <div className="text-sm text-neutral-500 mt-1">
-                {formatCostINR(data?.summary.totalCost || 0)}
+                {data?.summary.totalMessages || 0} messages
               </div>
             </div>
           </motion.div>

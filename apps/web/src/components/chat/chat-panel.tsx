@@ -121,14 +121,24 @@ export function ChatPanel({ sessionId, onSessionUpdate }: ChatPanelProps) {
           model: m.metadata?.model,
         }));
         setMessages(restored.length ? restored : initialMessages);
+        
+        // Restore session cost from context if available
+        if (ctx.session_cost) {
+          setSessionCost({
+            totalInr: ctx.session_cost.totalInr || 0,
+            savedInr: ctx.session_cost.savedInr || 0,
+            queries: ctx.session_cost.queries || 0,
+          });
+        } else {
+          setSessionCost({ totalInr: 0, savedInr: 0, queries: 0 });
+        }
       } catch (err) {
         console.error("Failed to load session context", err);
         setMessages(initialMessages);
+        setSessionCost({ totalInr: 0, savedInr: 0, queries: 0 });
       }
     };
     loadContext();
-    // reset state for new session
-    setSessionCost({ totalInr: 0, savedInr: 0, queries: 0 });
     setAttachedDocs([]);
   }, [sessionId]);
 

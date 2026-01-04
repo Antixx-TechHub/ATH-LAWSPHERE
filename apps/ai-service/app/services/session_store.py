@@ -91,6 +91,29 @@ async def fetch_context(session: AsyncSession, session_id: str, limit_messages: 
     files = (await session.execute(files_stmt)).scalars().all()
     notes = (await session.execute(notes_stmt)).scalars().all()
 
+    # Calculate accumulated session cost from message metadata
+    total_cost_inr = 0.0
+    total_saved_inr = 0.0
+    query_count = 0
+    models_used = {}
+    
+    for m in messages:
+        if m.role == "assistant" and m.meta:
+            cost_data = m.meta.get("cost", {})
+            if cost_data:
+                total_cost_inr += cost_data.get("estimated_cost_inr", 0) or 0
+                total_saved_inr += cost_data.get("saved_vs_cloud_inr", 0) or 0
+                query_count += 1
+            
+            model_name = m.meta.get("model", "unknown")
+            trust_data = m.meta.get("trust", {})
+            provider = trust_data.get("model_provider", "unknown")
+            
+            key = f"{provider}:{model_name}"
+            if key not in models_used:
+                models_used[key] = {"model": model_name, "provider": provider, "count": 0}
+            models_used[key]["count"] += 1
+
     return {
         "messages": [
             {
@@ -124,6 +147,12 @@ async def fetch_context(session: AsyncSession, session_id: str, limit_messages: 
             }
             for n in notes
         ],
+        "session_cost": {
+            "totalInr": total_cost_inr,
+            "savedInr": total_saved_inr,
+            "queries": query_count,
+        },
+        "models_used": list(models_used.values()),
     }
 
 

@@ -685,7 +685,11 @@ Maintain attorney-client privilege and confidentiality."""
             session_id=session_id,
             role=MessageRole.ASSISTANT.value,
             content=response_content,
-            metadata={"model": model_id, "trust": response_obj.trust.model_dump()},
+            metadata={
+                "model": model_id, 
+                "trust": response_obj.trust.model_dump(),
+                "cost": response_obj.cost.model_dump(),  # Store cost for session restoration
+            },
         )
         await db.commit()
         

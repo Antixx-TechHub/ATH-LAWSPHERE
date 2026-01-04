@@ -3,6 +3,8 @@ Lawsphere AI Service - Main Application Entry Point
 
 FastAPI backend for AI orchestration using LangGraph and LangSmith.
 Handles multi-LLM routing, document processing, and vector search.
+
+Version: 1.0.1 - Database reset endpoint active
 """
 
 import os

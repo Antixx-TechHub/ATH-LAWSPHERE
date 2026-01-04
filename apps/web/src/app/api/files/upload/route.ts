@@ -20,17 +20,41 @@ export const dynamic = 'force-dynamic';
 // Log storage mode on startup
 console.log('[File Upload API] Storage:', getStorageInfo());
 
+// Specific allowed MIME types
 const ALLOWED_TYPES = [
   'application/pdf',
   'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   'application/vnd.ms-excel',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/rtf',
   'text/plain',
+  'text/markdown',
+  'text/csv',
   'image/png',
   'image/jpeg',
+  'image/gif',
   'image/webp',
+  'image/tiff',
+  'image/bmp',
+  'audio/mpeg',
+  'audio/wav',
+  'audio/mp4',
+  'video/mp4',
+  'video/quicktime',
+  'video/x-msvideo',
 ];
+
+// Check if file type is allowed (also accept generic image/*, text/*, audio/*, video/*)
+function isAllowedType(mimeType: string): boolean {
+  if (ALLOWED_TYPES.includes(mimeType)) return true;
+  // Allow any image, text, audio, or video type
+  if (mimeType.startsWith('image/')) return true;
+  if (mimeType.startsWith('text/')) return true;
+  if (mimeType.startsWith('audio/')) return true;
+  if (mimeType.startsWith('video/')) return true;
+  return false;
+}
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
@@ -47,10 +71,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
-    console.log('[File Upload API] File:', file.name, 'Session:', sessionId, 'User:', userId);
+    console.log('[File Upload API] File:', file.name, 'Type:', file.type, 'Session:', sessionId, 'User:', userId);
 
     // Validate file type
-    if (!ALLOWED_TYPES.includes(file.type)) {
+    if (!isAllowedType(file.type)) {
       console.log('[File Upload API] Invalid type:', file.type);
       return NextResponse.json(
         { error: `File type not allowed: ${file.type}` },

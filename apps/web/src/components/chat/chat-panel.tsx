@@ -353,7 +353,7 @@ USER QUESTION: ${input}`;
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: "ai",
-        content: `⚠️ Error connecting to AI service. Make sure the AI service is running at http://localhost:8000 and your API keys are configured. Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        content: `⚠️ Error connecting to AI service. Please try again in a moment. If the problem persists, the AI service may be starting up. Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
         timestamp: new Date(),
         model: selectedModel,
       };

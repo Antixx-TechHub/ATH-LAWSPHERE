@@ -34,6 +34,12 @@ export async function GET(
     return getSessionFiles(sessionId);
   }
   
+  // Handle /api/sessions/{sessionId}/context - return session context from PostgreSQL
+  if (path.length === 2 && path[1] === 'context') {
+    const sessionId = path[0];
+    return getSessionContext(sessionId);
+  }
+  
   // Handle /api/sessions/{sessionId}/messages - proxy to AI service
   if (path.length === 2 && path[1] === 'messages') {
     return proxyToAIService(request, 'GET', path);
@@ -152,6 +158,68 @@ async function getSessionFiles(sessionId: string) {
     console.error('[Sessions API] getSessionFiles error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch files', details: String(error) },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * Get session context - files and extracted text for AI context
+ */
+async function getSessionContext(sessionId: string) {
+  try {
+    // Get session with files
+    const session = await prisma.chatSession.findUnique({
+      where: { id: sessionId },
+      include: {
+        files: {
+          select: {
+            id: true,
+            filename: true,
+            mimeType: true,
+            size: true,
+            extractedText: true,
+            createdAt: true
+          }
+        }
+      }
+    });
+    
+    if (!session) {
+      // Return empty context for non-existent sessions
+      return NextResponse.json({
+        session_id: sessionId,
+        files: [],
+        context_text: '',
+        file_count: 0
+      });
+    }
+    
+    // Build context from file extracted text
+    const contextParts: string[] = [];
+    for (const file of session.files) {
+      if (file.extractedText) {
+        contextParts.push(`--- File: ${file.filename} ---\n${file.extractedText}`);
+      }
+    }
+    
+    return NextResponse.json({
+      session_id: sessionId,
+      files: session.files.map(f => ({
+        id: f.id,
+        filename: f.filename,
+        mime_type: f.mimeType,
+        size: f.size,
+        has_text: !!f.extractedText,
+        created_at: f.createdAt.toISOString()
+      })),
+      context_text: contextParts.join('\n\n'),
+      file_count: session.files.length
+    });
+  } catch (error) {
+    console.error('[Sessions API] getSessionContext error:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch context', details: String(error) },
       { status: 500 }
     );
   }

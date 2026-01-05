@@ -5,8 +5,8 @@
 nixPkgs = ["nodejs_20", "openssl"]
 
 [phases.install]
-# Install from root to handle workspaces properly
-cmds = ["npm install"]
+# Install all workspace dependencies from root
+cmds = ["npm install --workspaces --include-workspace-root"]
 
 [phases.build]
 cmds = [

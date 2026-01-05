@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { sendPasswordResetEmail } from "@/lib/email";
 import crypto from "crypto";
 
 export async function POST(request: Request) {
@@ -42,26 +43,15 @@ export async function POST(request: Request) {
     const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:8080";
     const resetUrl = `${baseUrl}/auth/reset-password?token=${resetToken}`;
 
-    // Log for development (in production, send actual email)
-    console.log(`Password reset requested for: ${email}`);
-    console.log(`Reset URL: ${resetUrl}`);
+    // Send password reset email
+    const emailResult = await sendPasswordResetEmail({
+      to: email,
+      resetUrl,
+    });
 
-    // TODO: Send actual email in production
-    // For now, we'll use a simple console log
-    // In production, integrate with SendGrid, Resend, AWS SES, etc.
-    
-    // Example with a hypothetical email service:
-    // await sendEmail({
-    //   to: email,
-    //   subject: "Reset your Lawsphere password",
-    //   html: `
-    //     <h1>Reset Your Password</h1>
-    //     <p>Click the link below to reset your password:</p>
-    //     <a href="${resetUrl}">Reset Password</a>
-    //     <p>This link expires in 1 hour.</p>
-    //     <p>If you didn't request this, please ignore this email.</p>
-    //   `,
-    // });
+    if (!emailResult.success && !emailResult.devMode) {
+      console.error("Failed to send password reset email:", emailResult.error);
+    }
 
     return NextResponse.json({
       message: "If an account with that email exists, we sent a reset link",

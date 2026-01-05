@@ -40,8 +40,8 @@ export async function POST(request: NextRequest) {
       // Create new session
       chatSession = await prisma.chatSession.create({
         data: {
-          userId: session.user.id,
-          title: messages[0]?.content?.slice(0, 50) || 'New Chat',
+          createdById: session.user.id,
+          name: messages[0]?.content?.slice(0, 50) || 'New Chat',
         },
       });
     }
@@ -52,11 +52,14 @@ export async function POST(request: NextRequest) {
       await prisma.message.create({
         data: {
           sessionId: chatSession.id,
-          role: 'user',
+          userId: session.user.id,
+          type: 'USER',
           content: lastMessage.content,
         },
       });
     }
+
+    const startTime = Date.now();
 
     // Forward to AI service
     const aiResponse = await fetch(`${AI_SERVICE_URL}/api/chat/completions`, {
@@ -74,6 +77,8 @@ export async function POST(request: NextRequest) {
       }),
     });
 
+    const latency = Date.now() - startTime;
+
     if (!aiResponse.ok) {
       const error = await aiResponse.text();
       console.error('AI service error:', error);
@@ -89,10 +94,12 @@ export async function POST(request: NextRequest) {
     await prisma.message.create({
       data: {
         sessionId: chatSession.id,
-        role: 'assistant',
+        userId: session.user.id,
+        type: 'AI',
         content: data.content,
-        model: data.model,
-        tokens: data.usage?.total_tokens,
+        aiModel: data.model,
+        tokenCount: data.usage?.total_tokens,
+        responseTime: latency,
       },
     });
 
@@ -100,14 +107,12 @@ export async function POST(request: NextRequest) {
     await prisma.aIInteraction.create({
       data: {
         userId: session.user.id,
-        action: 'chat_completion',
-        model: data.model,
-        tokensUsed: data.usage?.total_tokens || 0,
-        metadata: {
-          session_id: chatSession.id,
-          prompt_tokens: data.usage?.prompt_tokens,
-          completion_tokens: data.usage?.completion_tokens,
-        },
+        model: data.model || 'unknown',
+        prompt: lastMessage?.content || '',
+        response: data.content || '',
+        inputTokens: data.usage?.prompt_tokens || 0,
+        outputTokens: data.usage?.completion_tokens || 0,
+        latency,
       },
     });
 
@@ -146,7 +151,7 @@ export async function GET(request: NextRequest) {
         },
       });
 
-      if (!chatSession || chatSession.userId !== session.user.id) {
+      if (!chatSession || chatSession.createdById !== session.user.id) {
         return NextResponse.json({ error: 'Session not found' }, { status: 404 });
       }
 
@@ -155,7 +160,7 @@ export async function GET(request: NextRequest) {
 
     // Get all sessions for user
     const sessions = await prisma.chatSession.findMany({
-      where: { userId: session.user.id },
+      where: { createdById: session.user.id },
       orderBy: { updatedAt: 'desc' },
       take: 50,
       include: {

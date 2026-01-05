@@ -8,16 +8,8 @@ import { Server as SocketIOServer, Socket } from 'socket.io';
 import { prisma } from '@/lib/prisma';
 
 interface AuthenticatedSocket extends Socket {
-  userId?: string;
+  odpsUserId?: string;
   sessionId?: string;
-}
-
-interface Message {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  sessionId: string;
-  createdAt: Date;
 }
 
 export function initSocketServer(httpServer: HTTPServer) {
@@ -34,16 +26,16 @@ export function initSocketServer(httpServer: HTTPServer) {
   io.use(async (socket: AuthenticatedSocket, next) => {
     try {
       const token = socket.handshake.auth.token;
-      
+
       if (!token) {
         return next(new Error('Authentication required'));
       }
 
       // Verify token and get user
       // In production, verify JWT token properly
-      const userId = token; // Simplified for demo
-      socket.userId = userId;
-      
+      const odpsUserId = token; // Simplified for demo
+      socket.odpsUserId = odpsUserId;
+
       next();
     } catch (error) {
       next(new Error('Authentication failed'));
@@ -52,16 +44,16 @@ export function initSocketServer(httpServer: HTTPServer) {
 
   // Connection handling
   io.on('connection', (socket: AuthenticatedSocket) => {
-    console.log(`User connected: ${socket.userId}`);
+    console.log(`User connected: ${socket.odpsUserId}`);
 
     // Join a chat session room
     socket.on('join:session', async ({ sessionId }) => {
       socket.sessionId = sessionId;
       socket.join(`session:${sessionId}`);
-      
+
       // Notify others in the session
       socket.to(`session:${sessionId}`).emit('user:joined', {
-        userId: socket.userId,
+        odpsUserId: socket.odpsUserId,
         sessionId,
       });
 
@@ -83,21 +75,22 @@ export function initSocketServer(httpServer: HTTPServer) {
     socket.on('leave:session', ({ sessionId }) => {
       socket.leave(`session:${sessionId}`);
       socket.to(`session:${sessionId}`).emit('user:left', {
-        userId: socket.userId,
+        odpsUserId: socket.odpsUserId,
         sessionId,
       });
     });
 
     // Send a message
     socket.on('message:send', async ({ sessionId, content }) => {
-      if (!socket.userId || !sessionId) return;
+      if (!socket.odpsUserId || !sessionId) return;
 
       try {
         // Store user message
         const userMessage = await prisma.message.create({
           data: {
             sessionId,
-            role: 'user',
+            userId: socket.odpsUserId,
+            type: 'USER',
             content,
           },
         });
@@ -106,7 +99,7 @@ export function initSocketServer(httpServer: HTTPServer) {
         io.to(`session:${sessionId}`).emit('message:new', userMessage);
 
         // Trigger AI response
-        triggerAIResponse(io, sessionId, content, socket.userId);
+        triggerAIResponse(io, sessionId, content, socket.odpsUserId);
       } catch (error) {
         console.error('Failed to send message:', error);
         socket.emit('error', { message: 'Failed to send message' });
@@ -116,24 +109,24 @@ export function initSocketServer(httpServer: HTTPServer) {
     // Typing indicators
     socket.on('user:typing', ({ sessionId }) => {
       socket.to(`session:${sessionId}`).emit('user:typing', {
-        userId: socket.userId,
+        odpsUserId: socket.odpsUserId,
         userName: 'User', // Get from session in production
       });
     });
 
     socket.on('user:stopped-typing', ({ sessionId }) => {
       socket.to(`session:${sessionId}`).emit('user:stopped-typing', {
-        userId: socket.userId,
+        odpsUserId: socket.odpsUserId,
       });
     });
 
     // Disconnect handling
     socket.on('disconnect', () => {
-      console.log(`User disconnected: ${socket.userId}`);
-      
+      console.log(`User disconnected: ${socket.odpsUserId}`);
+
       if (socket.sessionId) {
         socket.to(`session:${socket.sessionId}`).emit('user:left', {
-          userId: socket.userId,
+          odpsUserId: socket.odpsUserId,
         });
       }
     });
@@ -147,7 +140,7 @@ async function triggerAIResponse(
   io: SocketIOServer,
   sessionId: string,
   userMessage: string,
-  userId: string
+  odpsUserId: string
 ) {
   const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 
@@ -160,7 +153,7 @@ async function triggerAIResponse(
     });
 
     const messages = history.map((m) => ({
-      role: m.role,
+      role: m.type === 'USER' ? 'user' : 'assistant',
       content: m.content,
     }));
 
@@ -168,7 +161,8 @@ async function triggerAIResponse(
     const aiMessage = await prisma.message.create({
       data: {
         sessionId,
-        role: 'assistant',
+        userId: odpsUserId,
+        type: 'AI',
         content: '',
       },
     });
@@ -244,7 +238,7 @@ async function triggerAIResponse(
 
   } catch (error) {
     console.error('AI response error:', error);
-    
+
     // Send error message
     io.to(`session:${sessionId}`).emit('message:error', {
       error: 'Failed to get AI response',

@@ -2,7 +2,7 @@
  * Socket.IO Client Hook for Real-time Chat
  */
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useSession } from 'next-auth/react';
 import { create } from 'zustand';
@@ -10,7 +10,7 @@ import { create } from 'zustand';
 // Types
 interface Message {
   id: string;
-  role: 'user' | 'assistant' | 'system';
+  type: 'USER' | 'AI' | 'SYSTEM';
   content: string;
   createdAt: Date;
   sessionId: string;
@@ -18,7 +18,7 @@ interface Message {
 }
 
 interface TypingUser {
-  userId: string;
+  odpsUserId: string;
   userName: string;
 }
 
@@ -31,7 +31,7 @@ interface SocketState {
   setMessages: (messages: Message[]) => void;
   setConnected: (connected: boolean) => void;
   addTypingUser: (user: TypingUser) => void;
-  removeTypingUser: (userId: string) => void;
+  removeTypingUser: (odpsUserId: string) => void;
   clearMessages: () => void;
 }
 
@@ -54,11 +54,11 @@ export const useSocketStore = create<SocketState>((set) => ({
   setConnected: (connected) => set({ isConnected: connected }),
   addTypingUser: (user) =>
     set((state) => ({
-      typingUsers: [...state.typingUsers.filter((u) => u.userId !== user.userId), user],
+      typingUsers: [...state.typingUsers.filter((u) => u.odpsUserId !== user.odpsUserId), user],
     })),
-  removeTypingUser: (userId) =>
+  removeTypingUser: (odpsUserId) =>
     set((state) => ({
-      typingUsers: state.typingUsers.filter((u) => u.userId !== userId),
+      typingUsers: state.typingUsers.filter((u) => u.odpsUserId !== odpsUserId),
     })),
   clearMessages: () => set({ messages: [], typingUsers: [] }),
 }));
@@ -77,7 +77,7 @@ export function useSocket(sessionId?: string) {
     const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || '', {
       path: '/api/socket',
       auth: {
-        token: session.accessToken,
+        token: session.user.id,
       },
       transports: ['websocket', 'polling'],
     });
@@ -116,7 +116,7 @@ export function useSocket(sessionId?: string) {
       updateMessage(data.messageId, data.content);
     });
 
-    socket.on('message:complete', (data: { messageId: string }) => {
+    socket.on('message:complete', (_data: { messageId: string }) => {
       // Mark message as complete (stop streaming indicator)
     });
 
@@ -125,8 +125,8 @@ export function useSocket(sessionId?: string) {
       addTypingUser(user);
     });
 
-    socket.on('user:stopped-typing', (data: { userId: string }) => {
-      removeTypingUser(data.userId);
+    socket.on('user:stopped-typing', (data: { odpsUserId: string }) => {
+      removeTypingUser(data.odpsUserId);
     });
 
     // Cleanup
@@ -146,7 +146,7 @@ export function useSocket(sessionId?: string) {
 
       const message: Partial<Message> = {
         id: `temp-${Date.now()}`,
-        role: 'user',
+        type: 'USER',
         content,
         sessionId,
         createdAt: new Date(),

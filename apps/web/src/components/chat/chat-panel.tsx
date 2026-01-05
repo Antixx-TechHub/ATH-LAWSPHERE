@@ -26,6 +26,7 @@ import {
   Cloud,
   Lock,
   FileText,
+  Loader2,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -107,6 +108,7 @@ export function ChatPanel({ sessionId, onSessionUpdate, refreshSignal }: ChatPan
   const [input, setInput] = useState("");
   const [selectedModel, setSelectedModel] = useState("auto");
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingSession, setIsLoadingSession] = useState(true);
   const [sessionCost, setSessionCost] = useState({ totalInr: 0, savedInr: 0, queries: 0 });
   const [attachedDocs, setAttachedDocs] = useState<AttachedDocument[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -144,7 +146,11 @@ export function ChatPanel({ sessionId, onSessionUpdate, refreshSignal }: ChatPan
   // Load persisted context when session changes
   useEffect(() => {
     const loadContext = async () => {
-      if (!sessionId) return;
+      if (!sessionId) {
+        setIsLoadingSession(false);
+        return;
+      }
+      setIsLoadingSession(true);
       try {
         const ctx = await aiClient.getSessionContext(sessionId);
         const restored: Message[] = (ctx.messages || []).map((m: any) => ({
@@ -187,6 +193,8 @@ export function ChatPanel({ sessionId, onSessionUpdate, refreshSignal }: ChatPan
         setMessages(initialMessages);
         setSessionCost({ totalInr: 0, savedInr: 0, queries: 0 });
         setAttachedDocs([]);
+      } finally {
+        setIsLoadingSession(false);
       }
     };
     loadContext();
@@ -578,7 +586,14 @@ USER QUESTION: ${input}`;
 
       {/* Messages - Mobile Responsive */}
       <div className="flex-1 overflow-y-auto p-2 md:p-4 space-y-3 md:space-y-4">
-        {messages.map((message) => (
+        {isLoadingSession ? (
+          <div className="flex flex-col items-center justify-center h-full py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary-600 mb-3" />
+            <p className="text-sm text-neutral-500">Loading chat history...</p>
+          </div>
+        ) : (
+          <>
+            {messages.map((message) => (
           <div
             key={message.id}
             className={cn(
@@ -740,7 +755,9 @@ USER QUESTION: ${input}`;
           </div>
         )}
 
-        <div ref={messagesEndRef} />
+            <div ref={messagesEndRef} />
+          </>
+        )}
       </div>
 
       {/* Input Area - Mobile Responsive */}

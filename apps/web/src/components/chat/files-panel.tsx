@@ -21,6 +21,7 @@ import {
   AlertCircle,
   ShieldCheck,
   Shield,
+  Loader2,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -54,10 +55,16 @@ export function FilesPanel({ sessionId, onFilesChanged, refreshSignal }: FilesPa
   const [searchQuery, setSearchQuery] = useState("");
   const [viewingFile, setViewingFile] = useState<UploadedFile | null>(null);
   const [fileContent, setFileContent] = useState<string>("");
+  const [isLoadingFiles, setIsLoadingFiles] = useState(true);
 
   const refreshFiles = useCallback(async () => {
-    if (!sessionId) return;
-    const res = await aiClient.listSessionFiles(sessionId);
+    if (!sessionId) {
+      setIsLoadingFiles(false);
+      return;
+    }
+    setIsLoadingFiles(true);
+    try {
+      const res = await aiClient.listSessionFiles(sessionId);
     const mapped: UploadedFile[] = (res.files || []).map((f: any) => ({
       id: f.id,
       name: f.name,
@@ -69,6 +76,9 @@ export function FilesPanel({ sessionId, onFilesChanged, refreshSignal }: FilesPa
       piiDetected: f.pii_detected,
     }));
     setFiles(mapped);
+    } finally {
+      setIsLoadingFiles(false);
+    }
   }, [sessionId]);
 
   useEffect(() => {
@@ -220,8 +230,15 @@ export function FilesPanel({ sessionId, onFilesChanged, refreshSignal }: FilesPa
 
       {/* File List */}
       <div className="flex-1 overflow-y-auto px-4 pb-4">
-        <div className="space-y-2">
-          {filteredFiles.map((file) => {
+        {isLoadingFiles ? (
+          <div className="flex flex-col items-center justify-center h-full py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary-600 mb-3" />
+            <p className="text-sm text-neutral-500">Loading files...</p>
+          </div>
+        ) : (
+          <>
+            <div className="space-y-2">
+              {filteredFiles.map((file) => {
             const FileIcon = getFileIcon(file.type);
             return (
               <div
@@ -332,10 +349,12 @@ export function FilesPanel({ sessionId, onFilesChanged, refreshSignal }: FilesPa
         </div>
 
         {filteredFiles.length === 0 && (
-          <div className="text-center py-8 text-neutral-500">
-            <File className="h-12 w-12 mx-auto mb-2 opacity-50" />
-            <p>No files found</p>
-          </div>
+              <div className="text-center py-8 text-neutral-500">
+                <File className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                <p>No files found</p>
+              </div>
+            )}
+          </>
         )}
       </div>
 

@@ -5,11 +5,13 @@
 nixPkgs = ["nodejs_20", "openssl"]
 
 [phases.install]
-cmds = ["cd apps/web && npm install"]
+# Install from root to handle workspaces properly
+cmds = ["npm install"]
 
 [phases.build]
 cmds = [
     "cd apps/web && npx prisma generate",
+    "cd apps/web && npx prisma migrate deploy",
     "cd apps/web && npm run build"
 ]
 

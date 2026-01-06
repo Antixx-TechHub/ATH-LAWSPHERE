@@ -103,7 +103,7 @@ const initialMessages: Message[] = [
 export function ChatPanel({ sessionId, onSessionUpdate, refreshSignal }: ChatPanelProps) {
   const { data: authSession } = useSession();
   const userId = authSession?.user?.id || authSession?.user?.email;
-  
+
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [input, setInput] = useState("");
   const [selectedModel, setSelectedModel] = useState("auto");
@@ -114,31 +114,23 @@ export function ChatPanel({ sessionId, onSessionUpdate, refreshSignal }: ChatPan
   const [hasProcessingFiles, setHasProcessingFiles] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Function to load files from session context - returns whether any are still processing
+  // Function to load files from session context - returns true if any files are still processing
   const loadSessionFiles = useCallback(async (): Promise<boolean> => {
     if (!sessionId) return false;
     try {
       const ctx = await aiClient.getSessionContext(sessionId);
       if (ctx.files && ctx.files.length > 0) {
-        // Check if any files are still processing
         const processingFiles = ctx.files.filter((f: any) => f.status === 'processing');
         const readyFiles = ctx.files.filter((f: any) => f.extracted_text && f.status === 'ready');
-        
         const restoredDocs: AttachedDocument[] = readyFiles.map((f: any) => ({
           id: f.id,
           name: f.name,
           content: f.extracted_text,
           size: f.size || 0,
         }));
-        
-        console.log('[Chat] Loaded files:', {
-          total: ctx.files.length,
-          ready: readyFiles.length,
-          processing: processingFiles.length,
-        });
-        
+        console.log('[Chat] Loaded files - total:', ctx.files.length, 'ready:', readyFiles.length, 'processing:', processingFiles.length);
         setAttachedDocs(restoredDocs);
         return processingFiles.length > 0;
       }
@@ -163,9 +155,8 @@ export function ChatPanel({ sessionId, onSessionUpdate, refreshSignal }: ChatPan
             pollingIntervalRef.current = null;
           }
         }
-      }, 2000); // Poll every 2 seconds
+      }, 2000);
     }
-    
     return () => {
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);
@@ -178,10 +169,19 @@ export function ChatPanel({ sessionId, onSessionUpdate, refreshSignal }: ChatPan
   useEffect(() => {
     if (refreshSignal && refreshSignal > 0) {
       loadSessionFiles().then((stillProcessing) => {
-        setHasProcessingFiles(stillProcessing);
+        if (stillProcessing) setHasProcessingFiles(true);
       });
     }
   }, [refreshSignal, loadSessionFiles]);
+
+  // Load persisted context when session changes
+  useEffect(() => {
+    const loadContext = async () => {
+      if (!sessionId) {
+        setIsLoadingSession(false);
+        return;
+      }
+      setIsLoadingSession(true);
       try {
         const ctx = await aiClient.getSessionContext(sessionId);
         const restored: Message[] = (ctx.messages || []).map((m: any) => ({
@@ -192,7 +192,7 @@ export function ChatPanel({ sessionId, onSessionUpdate, refreshSignal }: ChatPan
           model: m.metadata?.model,
         }));
         setMessages(restored.length ? restored : initialMessages);
-        
+
         // Restore session cost from context if available
         if (ctx.session_cost) {
           setSessionCost({
@@ -203,7 +203,7 @@ export function ChatPanel({ sessionId, onSessionUpdate, refreshSignal }: ChatPan
         } else {
           setSessionCost({ totalInr: 0, savedInr: 0, queries: 0 });
         }
-        
+
         // Restore previously uploaded files as attached documents for chat context
         if (ctx.files && ctx.files.length > 0) {
           const processingFiles = ctx.files.filter((f: any) => f.status === 'processing');
@@ -215,9 +215,8 @@ export function ChatPanel({ sessionId, onSessionUpdate, refreshSignal }: ChatPan
               content: f.extracted_text,
               size: f.size || 0,
             }));
-          console.log('[Chat] Restored', restoredDocs.length, 'files from session, processing:', processingFiles.length);
+          console.log('[Chat] Restored', restoredDocs.length, 'files, processing:', processingFiles.length);
           setAttachedDocs(restoredDocs);
-          // Start polling if any files are still processing
           if (processingFiles.length > 0) {
             setHasProcessingFiles(true);
           }

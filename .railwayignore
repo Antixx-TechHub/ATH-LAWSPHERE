@@ -1,0 +1,12 @@
+# Only ignore things that should definitely not be uploaded
+node_modules
+.next
+.turbo
+.git
+*.log
+__pycache__
+.venv
+venv
+.env
+.env.*
+!.env.example

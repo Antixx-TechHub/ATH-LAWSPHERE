@@ -237,11 +237,27 @@ export async function GET(request: NextRequest) {
           { sessionId: { in: sessionIds } }
         ]
       },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        }
+      },
       orderBy: { createdAt: 'desc' },
       take: 100,
     });
 
-    return NextResponse.json({ files });
+    // Map files to include user info
+    const filesWithUser = files.map(f => ({
+      ...f,
+      userName: f.user?.name || f.user?.email?.split('@')[0] || 'Unknown',
+      userEmail: f.user?.email
+    }));
+
+    return NextResponse.json({ files: filesWithUser });
   } catch (error) {
     console.error('Files GET error:', error);
     return NextResponse.json(

@@ -16,7 +16,7 @@ import { useDropzone } from 'react-dropzone';
 import { 
   Loader2, Search, FileText, Image, Trash2, Download, RefreshCw, 
   Grid, List, Eye, MessageSquare, Upload, ChevronLeft, ChevronRight,
-  Calendar, FolderOpen
+  Calendar, FolderOpen, User
 } from 'lucide-react';
 
 interface FileItem {
@@ -31,6 +31,7 @@ interface FileItem {
   sessionName?: string;
   userId?: string;
   userName?: string;
+  userEmail?: string;
   url?: string;
 }
 
@@ -346,6 +347,10 @@ export default function FilesPage() {
                             {getSourceTag(file)}
                           </div>
                           <div className="flex items-center gap-1 mt-1 text-[10px] text-muted-foreground">
+                            <User className="h-3 w-3" />
+                            <span className="truncate max-w-[100px]" title={file.userName || 'Unknown'}>{file.userName || 'Unknown'}</span>
+                          </div>
+                          <div className="flex items-center gap-1 mt-0.5 text-[10px] text-muted-foreground">
                             <Calendar className="h-3 w-3" />
                             {formatDateShort(file.createdAt)}
                           </div>
@@ -384,6 +389,7 @@ export default function FilesPage() {
                       <th className="px-4 py-3">File</th>
                       <th className="px-4 py-3 hidden md:table-cell">Size</th>
                       <th className="px-4 py-3 hidden lg:table-cell">Source</th>
+                      <th className="px-4 py-3 hidden xl:table-cell">Uploaded By</th>
                       <th className="px-4 py-3 hidden sm:table-cell">Uploaded</th>
                       <th className="px-4 py-3">Status</th>
                       <th className="px-4 py-3 text-right">Actions</th>
@@ -410,6 +416,12 @@ export default function FilesPage() {
                         </td>
                         <td className="px-4 py-3 hidden lg:table-cell">
                           {getSourceTag(file)}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-muted-foreground hidden xl:table-cell">
+                          <div className="flex items-center gap-1.5">
+                            <User className="h-3.5 w-3.5" />
+                            <span className="truncate max-w-[120px]" title={file.userName || 'Unknown'}>{file.userName || 'Unknown'}</span>
+                          </div>
                         </td>
                         <td className="px-4 py-3 text-xs text-muted-foreground hidden sm:table-cell">
                           {formatDateTime(file.createdAt)}
@@ -514,23 +526,30 @@ export default function FilesPage() {
                 
                 <div className="space-y-3 text-sm">
                   <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground w-20">Status:</span>
+                    <span className="text-muted-foreground w-24">Status:</span>
                     <div className="flex items-center gap-1.5">
                       <div className={`w-2 h-2 rounded-full ${getStatusColor(previewFile.status)}`} />
                       <span className="capitalize">{previewFile.status?.toLowerCase()}</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground w-20">Source:</span>
+                    <span className="text-muted-foreground w-24">Source:</span>
                     {getSourceTag(previewFile)}
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground w-20">Type:</span>
+                    <span className="text-muted-foreground w-24">Uploaded By:</span>
+                    <div className="flex items-center gap-1.5">
+                      <User className="h-3.5 w-3.5" />
+                      <span>{previewFile.userName || 'Unknown'}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground w-24">Type:</span>
                     <span>{previewFile.mimeType}</span>
                   </div>
                   {previewFile.sessionId && (
                     <div className="flex items-center gap-2">
-                      <span className="text-muted-foreground w-20">Session:</span>
+                      <span className="text-muted-foreground w-24">Session:</span>
                       <Button variant="link" size="sm" className="h-auto p-0 text-sm" onClick={() => { setPreviewFile(null); handleGoToChat(previewFile.sessionId!); }}>
                         Go to chat session →
                       </Button>

@@ -189,19 +189,14 @@ export function DashboardHome({ user }: DashboardHomeProps) {
     if (diffMins < 60) return `${diffMins} min ago`;
     if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
     if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
-    return date.toLocaleDateString();
-  };
-
-  return (
-    <div className="space-y-4 md:space-y-5 pb-16 md:pb-0">
-      {/* Welcome Section */}
-      <div>
-        <h1 className="text-lg md:text-xl font-display font-bold text-neutral-900 dark:text-white">
-          {greeting}, {user?.name?.split(" ")[0] || "there"}!
-        </h1>
-        <p className="text-neutral-600 dark:text-neutral-400 mt-0.5 text-xs md:text-sm hidden sm:block">
-          Here's what's happening with your legal work today.
-        </p>
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
       </div>
 
       {/* Stats Grid - Mobile Responsive */}

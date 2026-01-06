@@ -1,6 +1,17 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazy initialization to avoid errors during build
+let resendClient: Resend | null = null;
+
+function getResendClient(): Resend | null {
+  if (!process.env.RESEND_API_KEY) {
+    return null;
+  }
+  if (!resendClient) {
+    resendClient = new Resend(process.env.RESEND_API_KEY);
+  }
+  return resendClient;
+}
 
 interface SendPasswordResetEmailParams {
   to: string;
@@ -11,8 +22,10 @@ export async function sendPasswordResetEmail({
   to,
   resetUrl,
 }: SendPasswordResetEmailParams) {
+  const resend = getResendClient();
+  
   // If no API key, log to console (development mode)
-  if (!process.env.RESEND_API_KEY) {
+  if (!resend) {
     console.log("=== PASSWORD RESET EMAIL (Dev Mode) ===");
     console.log(`To: ${to}`);
     console.log(`Reset URL: ${resetUrl}`);
@@ -37,29 +50,29 @@ export async function sendPasswordResetEmail({
               <div style="text-align: center; margin-bottom: 32px;">
                 <h1 style="color: #1e40af; font-size: 28px; margin: 0;">⚖️ Lawsphere</h1>
               </div>
-              
+
               <h2 style="color: #18181b; font-size: 20px; margin-bottom: 16px;">Reset Your Password</h2>
-              
+
               <p style="color: #52525b; font-size: 16px; line-height: 1.6; margin-bottom: 24px;">
                 We received a request to reset your password. Click the button below to create a new password.
               </p>
-              
+
               <div style="text-align: center; margin-bottom: 24px;">
                 <a href="${resetUrl}" style="display: inline-block; background-color: #1e40af; color: white; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
                   Reset Password
                 </a>
               </div>
-              
+
               <p style="color: #71717a; font-size: 14px; line-height: 1.6;">
                 This link will expire in <strong>1 hour</strong>.
               </p>
-              
+
               <p style="color: #71717a; font-size: 14px; line-height: 1.6;">
                 If you didn't request this password reset, you can safely ignore this email. Your password will remain unchanged.
               </p>
-              
+
               <hr style="border: none; border-top: 1px solid #e4e4e7; margin: 32px 0;">
-              
+
               <p style="color: #a1a1aa; font-size: 12px; text-align: center;">
                 If the button doesn't work, copy and paste this link into your browser:<br>
                 <a href="${resetUrl}" style="color: #1e40af; word-break: break-all;">${resetUrl}</a>

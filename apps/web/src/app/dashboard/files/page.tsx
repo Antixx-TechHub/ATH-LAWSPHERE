@@ -138,7 +138,17 @@ export default function FilesPage() {
   };
 
   const handleViewFile = (file: FileItem) => {
-    setPreviewFile(file);
+    // For images and PDFs, open directly in new tab
+    if (file.mimeType?.startsWith('image/') || file.mimeType === 'application/pdf' || file.mimeType === 'text/plain') {
+      window.open(`/api/files/download?id=${file.id}`, '_blank');
+    } else {
+      // For other files, show the preview modal with details
+      setPreviewFile(file);
+    }
+  };
+
+  const handleOpenInNewTab = (fileId: string) => {
+    window.open(`/api/files/download?id=${fileId}`, '_blank');
   };
 
   const handleGoToChat = (sessionId: string) => {
@@ -558,15 +568,18 @@ export default function FilesPage() {
                 </div>
 
                 <div className="flex gap-2 mt-6">
+                  <Button variant="outline" className="flex-1" onClick={() => handleOpenInNewTab(previewFile.id)}>
+                    <Eye className="h-4 w-4 mr-2" /> Open File
+                  </Button>
                   <Button className="flex-1" onClick={() => handleDownload(previewFile.id, previewFile.originalName || previewFile.filename)}>
                     <Download className="h-4 w-4 mr-2" /> Download
                   </Button>
-                  {previewFile.sessionId && (
-                    <Button variant="outline" className="flex-1" onClick={() => { setPreviewFile(null); handleGoToChat(previewFile.sessionId!); }}>
-                      <MessageSquare className="h-4 w-4 mr-2" /> Open Chat
-                    </Button>
-                  )}
                 </div>
+                {previewFile.sessionId && (
+                  <Button variant="outline" className="w-full mt-2" onClick={() => { setPreviewFile(null); handleGoToChat(previewFile.sessionId!); }}>
+                    <MessageSquare className="h-4 w-4 mr-2" /> Open Chat Session
+                  </Button>
+                )}
               </CardContent>
             </Card>
           </div>

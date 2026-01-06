@@ -1,13 +1,13 @@
 # Nixpacks configuration for Railway
 # Builds the web app from monorepo
-# Cache bust: 2026-01-05-v1
+# Force fresh build: 2026-01-06-v2
 
 [phases.setup]
 nixPkgs = ["nodejs_20", "openssl"]
 
 [phases.install]
-# Install all workspace dependencies from root
-cmds = ["npm install --workspaces --include-workspace-root"]
+# Install all workspace dependencies from root - changed to force cache invalidation
+cmds = ["npm ci --workspaces --include-workspace-root || npm install --workspaces --include-workspace-root"]
 
 [phases.build]
 cmds = [

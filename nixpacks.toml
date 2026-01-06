@@ -1,21 +1,20 @@
 # Nixpacks configuration for Railway
-# Builds the web app from monorepo
-# Force fresh build: 2026-01-06-v2
+# Force fresh build: 2026-01-06-v3
 
 [phases.setup]
 nixPkgs = ["nodejs_20", "openssl"]
 
 [phases.install]
-# Install all workspace dependencies from root - changed to force cache invalidation
 cmds = ["npm ci --workspaces --include-workspace-root || npm install --workspaces --include-workspace-root"]
 
 [phases.build]
 cmds = [
+    "echo '=== DEBUG: Listing apps/web/src/components/ui ===' && ls -la apps/web/src/components/ui/ || echo 'UI FOLDER NOT FOUND'",
+    "echo '=== DEBUG: Checking tsconfig.json ===' && cat apps/web/tsconfig.json",
     "cd apps/web && npx prisma generate",
     "cd apps/web && npm run build"
 ]
 
-# Run migrations at startup (when DB is accessible)
 [start]
 cmd = "cd apps/web && npx prisma migrate deploy && node server.js"
 

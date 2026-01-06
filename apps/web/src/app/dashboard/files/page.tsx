@@ -51,7 +51,7 @@ export default function FilesPage() {
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     for (const file of acceptedFiles) {
-      const tempId = \`temp-\${Date.now()}-\${Math.random().toString(36).substr(2, 9)}\`;
+      const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       setUploadingFiles(prev => new Map(prev).set(tempId, { name: file.name, progress: 0 }));
 
       try {
@@ -91,7 +91,7 @@ export default function FilesPage() {
   const handleDelete = async (fileId: string) => {
     if (!confirm('Are you sure you want to delete this file?')) return;
     try {
-      const response = await fetch(\`/api/files?id=\${fileId}\`, { method: 'DELETE' });
+      const response = await fetch(`/api/files?id=${fileId}`, { method: 'DELETE' });
       if (response.ok) {
         setFiles(prev => prev.filter(f => f.id !== fileId));
       }
@@ -102,7 +102,7 @@ export default function FilesPage() {
 
   const handleDownload = async (fileId: string, filename: string) => {
     try {
-      const response = await fetch(\`/api/files/download?id=\${fileId}\`);
+      const response = await fetch(`/api/files/download?id=${fileId}`);
       if (response.ok) {
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
@@ -132,9 +132,9 @@ export default function FilesPage() {
   });
 
   const formatFileSize = (bytes: number) => {
-    if (bytes < 1024) return \`\${bytes} B\`;
-    if (bytes < 1024 * 1024) return \`\${(bytes / 1024).toFixed(1)} KB\`;
-    return \`\${(bytes / (1024 * 1024)).toFixed(1)} MB\`;
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   const formatDate = (dateString: string) => {
@@ -173,7 +173,7 @@ export default function FilesPage() {
             <p className="text-sm text-muted-foreground hidden sm:block">All your uploaded documents in one place</p>
           </div>
           <Button variant="outline" size="sm" onClick={() => { setIsLoading(true); fetchFiles(); }} disabled={isLoading}>
-            <RefreshCw className={\`h-4 w-4 mr-2 \${isLoading ? 'animate-spin' : ''}\`} />
+            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
         </div>
@@ -185,7 +185,7 @@ export default function FilesPage() {
 
         <Card>
           <CardContent className="p-0">
-            <div {...getRootProps()} className={\`border-2 border-dashed rounded-lg p-6 md:p-12 text-center cursor-pointer transition-colors \${isDragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/25 hover:border-primary/50'}\`}>
+            <div {...getRootProps()} className={`border-2 border-dashed rounded-lg p-6 md:p-12 text-center cursor-pointer transition-colors ${isDragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/25 hover:border-primary/50'}`}>
               <input {...getInputProps()} />
               <svg className="mx-auto h-8 w-8 md:h-12 md:w-12 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
@@ -219,7 +219,7 @@ export default function FilesPage() {
 
         {!isLoading && filteredFiles.length > 0 && (
           <div className="space-y-3 md:space-y-4">
-            <h2 className="text-base md:text-lg font-semibold">{searchQuery ? \`Search Results (\${filteredFiles.length})\` : \`All Files (\${filteredFiles.length})\`}</h2>
+            <h2 className="text-base md:text-lg font-semibold">{searchQuery ? `Search Results (${filteredFiles.length})` : `All Files (${filteredFiles.length})`}</h2>
             <div className="grid gap-3 md:gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
               {filteredFiles.map((file) => (
                 <Card key={file.id} className="relative group">
@@ -232,7 +232,7 @@ export default function FilesPage() {
                         <p className="font-medium text-sm md:text-base truncate" title={file.originalName || file.filename}>{file.originalName || file.filename}</p>
                         <p className="text-xs md:text-sm text-muted-foreground">{formatFileSize(file.size)} • {formatDate(file.createdAt)}</p>
                         <div className="flex items-center gap-1.5 md:gap-2 mt-1.5 md:mt-2">
-                          <div className={\`w-1.5 h-1.5 md:w-2 md:h-2 rounded-full \${getStatusColor(file.status)}\`} />
+                          <div className={`w-1.5 h-1.5 md:w-2 md:h-2 rounded-full ${getStatusColor(file.status)}`} />
                           <span className="text-[10px] md:text-xs capitalize">{file.status?.toLowerCase()}</span>
                           {file.sessionId && <span className="text-[10px] md:text-xs text-muted-foreground bg-muted px-1.5 rounded">Chat</span>}
                         </div>

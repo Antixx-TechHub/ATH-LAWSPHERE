@@ -3,8 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
 import {
   MessageSquare,
   Plus,
@@ -16,14 +16,14 @@ import {
   Check,
   X,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { aiClient } from "@/lib/api/ai-client";
+import { cn } from "../../lib/utils";
+import { aiClient } from "../../lib/api/ai-client";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "../../components/ui/dropdown-menu";
 
 interface Session {
   id: string;

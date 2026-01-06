@@ -3,11 +3,11 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { ChatPanel } from "@/components/chat/chat-panel";
-import { FilesPanel } from "@/components/chat/files-panel";
-import { NotesPanel } from "@/components/chat/notes-panel";
-import { SessionInfoPanel } from "@/components/chat/session-info-panel";
-import { Button } from "@/components/ui/button";
+import { ChatPanel } from "../../components/chat/chat-panel";
+import { FilesPanel } from "../../components/chat/files-panel";
+import { NotesPanel } from "../../components/chat/notes-panel";
+import { SessionInfoPanel } from "../../components/chat/session-info-panel";
+import { Button } from "../../components/ui/button";
 import {
   MessageSquare,
   FileText,
@@ -16,8 +16,8 @@ import {
   PanelRightClose,
   PanelRightOpen,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { aiClient } from "@/lib/api/ai-client";
+import { cn } from "../../lib/utils";
+import { aiClient } from "../../lib/api/ai-client";
 
 type ActivePanel = "chat" | "files" | "notes";
 

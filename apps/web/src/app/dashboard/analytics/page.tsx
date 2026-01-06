@@ -16,7 +16,7 @@ import {
   RefreshCw,
   Globe,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "../../components/ui/button";
 
 // Currency configurations
 type Currency = "USD" | "INR" | "EUR" | "GBP";

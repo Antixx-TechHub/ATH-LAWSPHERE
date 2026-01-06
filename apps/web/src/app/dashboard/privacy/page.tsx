@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card";
 import { Shield, ShieldCheck, Cloud, Lock, AlertTriangle, FileCheck, Activity } from "lucide-react";
-import { aiClient } from "@/lib/api/ai-client";
+import { aiClient } from "../../lib/api/ai-client";
 
 interface TrustMetrics {
   total_requests: number;

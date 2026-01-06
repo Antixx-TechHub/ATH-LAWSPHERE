@@ -5,11 +5,11 @@
 'use client';
 
 import { useState } from 'react';
-import { DashboardLayout } from '@/components/layout/dashboard-layout';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { aiClient } from '@/lib/api/ai-client';
+import { DashboardLayout } from '../../components/layout/dashboard-layout';
+import { Input } from '../../components/ui/input';
+import { Button } from '../../components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
+import { aiClient } from '../../lib/api/ai-client';
 
 interface SearchResult {
   id: string;

@@ -9,7 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
-import { uploadFile, getStorageInfo } from '@/lib/storage';
+import { uploadFile, getStorageInfo } from '../../../lib/storage';
 
 const prisma = new PrismaClient();
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';

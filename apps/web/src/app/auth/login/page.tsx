@@ -7,9 +7,9 @@ import { useState, Suspense } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
+import { Label } from "../../components/ui/label";
 import {
   Card,
   CardContent,
@@ -17,8 +17,8 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
+} from "../../components/ui/card";
+import { useToast } from "../../hooks/use-toast";
 import { Scale, Mail, Lock, Chrome, Github } from "lucide-react";
 
 function LoginPageInner() {

@@ -1,11 +1,12 @@
-# Railway configuration
-# Using Nixpacks for more reliable builds
+# Railway configuration for ATH-LawSphere
+# Updated: 2026-01-06 - Force fresh build
 
 [build]
 builder = "nixpacks"
-watchPatterns = ["apps/web/**"]
+watchPatterns = ["apps/web/**", "nixpacks.toml", "package.json"]
 
 [deploy]
+startCommand = "cd apps/web && npx prisma migrate deploy && node server.js"
 healthcheckPath = "/_health"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"

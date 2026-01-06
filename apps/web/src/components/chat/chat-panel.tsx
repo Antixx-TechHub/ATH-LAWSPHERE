@@ -292,7 +292,7 @@ export function ChatPanel({ sessionId, onSessionUpdate, refreshSignal }: ChatPan
         // Also upload the file to the session so it appears in the Files tab
         try {
           if (sessionId) {
-            await aiClient.uploadFile(file, sessionId);
+            await aiClient.uploadFile(file, sessionId, userId || undefined);
           }
         } catch (uploadErr) {
           console.error('Upload failed for', file.name, uploadErr);

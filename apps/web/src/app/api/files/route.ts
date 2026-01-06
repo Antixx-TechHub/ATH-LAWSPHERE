@@ -222,17 +222,21 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // List files
-    const where: { userId: string; sessionId?: string } = {
-      userId: session.user.id,
-    };
-
-    if (matterId) {
-      where.sessionId = matterId;
-    }
+    // List files - include files from user's sessions AND files uploaded by user
+    // This ensures chat attachments appear in Library even if uploaded as "anonymous"
+    const userSessions = await prisma.chatSession.findMany({
+      where: { createdById: session.user.id },
+      select: { id: true }
+    });
+    const sessionIds = userSessions.map(s => s.id);
 
     const files = await prisma.file.findMany({
-      where,
+      where: {
+        OR: [
+          { userId: session.user.id },
+          { sessionId: { in: sessionIds } }
+        ]
+      },
       orderBy: { createdAt: 'desc' },
       take: 100,
     });

@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@/lib/utils";
+import { cn } from "../../lib/utils";
 import { Shield, ShieldCheck, Cloud, Server, Lock, AlertTriangle, CheckCircle, Info } from "lucide-react";
 
 interface TrustInfo {

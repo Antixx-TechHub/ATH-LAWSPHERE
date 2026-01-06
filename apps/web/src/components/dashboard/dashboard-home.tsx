@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import { Button } from "../../components/ui/button";
 import {
   MessageSquare,
   FileText,
@@ -18,7 +18,7 @@ import {
   Loader2,
   IndianRupee,
 } from "lucide-react";
-import { aiClient } from "@/lib/api/ai-client";
+import { aiClient } from "../../lib/api/ai-client";
 
 interface DashboardHomeProps {
   user?: {

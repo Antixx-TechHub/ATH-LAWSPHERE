@@ -5,7 +5,7 @@
 
 import { Server as HTTPServer } from 'http';
 import { Server as SocketIOServer, Socket } from 'socket.io';
-import { prisma } from '@/lib/prisma';
+import { prisma } from "../lib/prisma';
 
 interface AuthenticatedSocket extends Socket {
   odpsUserId?: string;

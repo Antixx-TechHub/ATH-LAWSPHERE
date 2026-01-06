@@ -1,6 +1,6 @@
 "use client";
 
-import { formatFileSize } from "@/lib/utils";
+import { formatFileSize } from "../../lib/utils";
 import {
   FileText,
   Image,

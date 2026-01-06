@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
+import { Textarea } from "../../components/ui/textarea";
 import {
   Plus,
   Search,
@@ -22,9 +22,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
-import { aiClient } from "@/lib/api/ai-client";
+} from "../../components/ui/dropdown-menu";
+import { cn } from "../../lib/utils";
+import { aiClient } from "../../lib/api/ai-client";
 
 interface NotesPanelProps {
   sessionId: string;

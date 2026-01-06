@@ -2,8 +2,8 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
 import {
   Upload,
   FileText,
@@ -28,9 +28,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { cn, formatFileSize } from "@/lib/utils";
-import { aiClient } from "@/lib/api/ai-client";
+} from "../../components/ui/dropdown-menu";
+import { cn, formatFileSize } from "../../lib/utils";
+import { aiClient } from "../../lib/api/ai-client";
 
 interface FilesPanelProps {
   sessionId: string;

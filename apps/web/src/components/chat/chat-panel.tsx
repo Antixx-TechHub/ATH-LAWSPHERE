@@ -1,16 +1,16 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "../../components/ui/button";
+import { Textarea } from "../../components/ui/textarea";
+import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "../../components/ui/select";
 import {
   Send,
   Paperclip,
@@ -29,11 +29,11 @@ import {
   Loader2,
   X,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "../../lib/utils";
 import ReactMarkdown from "react-markdown";
 import { TrustBadge } from "./trust-badge";
 import { useSession } from "next-auth/react";
-import { aiClient } from "@/lib/api/ai-client";
+import { aiClient } from "../../lib/api/ai-client";
 
 // Attached document interface
 interface AttachedDocument {

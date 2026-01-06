@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { signOut } from "next-auth/react";
 import { useTheme } from "next-themes";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "../../components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,7 +12,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "../../components/ui/dropdown-menu";
 import {
   Bell,
   Search,
@@ -24,7 +24,7 @@ import {
   HelpCircle,
   Menu,
 } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { Input } from "../../components/ui/input";
 
 interface TopBarProps {
   user?: {

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ArrowLeft, Mail, Globe, Linkedin, Twitter } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "../../components/ui/button";
 
 export default function ContactPage() {
   return (

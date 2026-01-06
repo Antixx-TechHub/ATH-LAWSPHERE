@@ -4,7 +4,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../../../lib/auth';
+import { authOptions } from '../../../../lib/auth';
 
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
 

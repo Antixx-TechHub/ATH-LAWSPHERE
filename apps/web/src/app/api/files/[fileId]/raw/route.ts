@@ -10,9 +10,9 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../../../../lib/auth';
-import { prisma } from '../../../../lib/prisma';
-import { downloadFile } from '../../../../lib/storage';
+import { authOptions } from '../../../../../lib/auth';
+import { prisma } from '../../../../../lib/prisma';
+import { downloadFile } from '../../../../../lib/storage';
 
 // Disable Next.js caching for this route
 export const dynamic = 'force-dynamic';

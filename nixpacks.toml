@@ -1,5 +1,6 @@
 # Nixpacks configuration for Railway
 # Builds the web app from monorepo
+# Cache bust: 2026-01-05-v1
 
 [phases.setup]
 nixPkgs = ["nodejs_20", "openssl"]

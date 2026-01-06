@@ -1,5 +1,5 @@
 # Nixpacks configuration for Railway
-# Force fresh build: 2026-01-06-v3
+# Force fresh build: 2026-01-06-v4
 
 [phases.setup]
 nixPkgs = ["nodejs_20", "openssl"]
@@ -9,8 +9,7 @@ cmds = ["npm ci --workspaces --include-workspace-root || npm install --workspace
 
 [phases.build]
 cmds = [
-    "echo '=== DEBUG: Listing apps/web/src/components/ui ===' && ls -la apps/web/src/components/ui/ || echo 'UI FOLDER NOT FOUND'",
-    "echo '=== DEBUG: Checking tsconfig.json ===' && cat apps/web/tsconfig.json",
+    "rm -rf apps/web/.next/cache node_modules/.cache",
     "cd apps/web && npx prisma generate",
     "cd apps/web && npm run build"
 ]

@@ -5,11 +5,11 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { DashboardLayout } from '../../components/layout/dashboard-layout';
-import { Button } from '../../components/ui/button';
-import { Card, CardContent } from '../../components/ui/card';
+import { DashboardLayout } from '../../../components/layout/dashboard-layout';
+import { Button } from '../../../components/ui/button';
+import { Card, CardContent } from '../../../components/ui/card';
 import { useDropzone } from 'react-dropzone';
-import { useFileStore } from '../../stores/fileStore';
+import { useFileStore } from '../../../stores/fileStore';
 
 export default function FilesPage() {
   const { files, addFile, updateFile, removeFile } = useFileStore();

@@ -6,11 +6,11 @@
 
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
-import { DashboardLayout } from '../../components/layout/dashboard-layout';
-import { Button } from '../../components/ui/button';
-import { Input } from '../../components/ui/input';
-import { Label } from '../../components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
+import { DashboardLayout } from '../../../components/layout/dashboard-layout';
+import { Button } from '../../../components/ui/button';
+import { Input } from '../../../components/ui/input';
+import { Label } from '../../../components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card';
 
 export default function SettingsPage() {
   const { data: session } = useSession();

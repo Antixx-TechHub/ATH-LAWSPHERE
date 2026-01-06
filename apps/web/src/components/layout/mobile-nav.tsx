@@ -8,6 +8,7 @@ import {
   MessageSquare,
   Library,
   Users,
+  Network,
   MoreHorizontal,
 } from "lucide-react";
 
@@ -15,7 +16,7 @@ const mobileNavItems = [
   { href: "/dashboard", label: "Home", icon: Home },
   { href: "/dashboard/chat", label: "Chat", icon: MessageSquare },
   { href: "/dashboard/files", label: "Files", icon: Library },
-  { href: "/dashboard/sessions", label: "Sessions", icon: Users },
+  { href: "/dashboard/knowledge-map", label: "Map", icon: Network },
 ];
 
 export function MobileNav() {

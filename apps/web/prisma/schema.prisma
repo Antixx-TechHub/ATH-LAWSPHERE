@@ -28,22 +28,22 @@ model User {
   resetTokenExp DateTime?
 
   // Relations
-  accounts      Account[]
-  sessions      AuthSession[]
-  userRoles     UserRole[]
-  
+  accounts  Account[]
+  sessions  AuthSession[]
+  userRoles UserRole[]
+
   // Chat & Collaboration
   chatSessions        SessionParticipant[]
   messages            Message[]
   createdChatSessions ChatSession[]        @relation("SessionCreator")
-  
+
   // Files & Notes
-  files     File[]
-  notes     Note[]
-  
+  files File[]
+  notes Note[]
+
   // AI Interactions
   aiInteractions AIInteraction[]
-  
+
   // Notifications
   notifications Notification[]
 
@@ -95,18 +95,18 @@ model Role {
   name        String   @unique
   description String?
   createdAt   DateTime @default(now())
-  
+
   // Relations
   permissions RolePermission[]
   users       UserRole[]
 }
 
 model Permission {
-  id          String   @id @default(cuid())
-  code        String   @unique
+  id          String  @id @default(cuid())
+  code        String  @unique
   name        String
   description String?
-  
+
   // Relations
   roles RolePermission[]
 }
@@ -114,7 +114,7 @@ model Permission {
 model RolePermission {
   roleId       String
   permissionId String
-  
+
   role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
   permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
 
@@ -122,11 +122,11 @@ model RolePermission {
 }
 
 model UserRole {
-  userId    String
-  roleId    String
-  assignedAt DateTime @default(now())
+  userId     String
+  roleId     String
+  assignedAt DateTime  @default(now())
   expiresAt  DateTime?
-  
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
@@ -142,16 +142,17 @@ model ChatSession {
   isPrivate   Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  
+
   // Creator
   createdById String
   createdBy   User   @relation("SessionCreator", fields: [createdById], references: [id])
-  
+
   // Relations
-  participants SessionParticipant[]
-  messages     Message[]
-  files        File[]
-  notes        Note[]
+  participants  SessionParticipant[]
+  messages      Message[]
+  files         File[]
+  notes         Note[]
+  KnowledgeNode KnowledgeNode[]
 
   @@index([createdById])
 }
@@ -163,7 +164,7 @@ model SessionParticipant {
   role      String   @default("member") // owner, admin, member, viewer
   isOnline  Boolean  @default(false)
   lastSeen  DateTime @default(now())
-  
+
   session ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -174,24 +175,24 @@ model SessionParticipant {
 // ==================== MESSAGES ====================
 
 model Message {
-  id        String   @id @default(cuid())
-  content   String   @db.Text
+  id        String      @id @default(cuid())
+  content   String      @db.Text
   type      MessageType @default(USER)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
   // Relations
   sessionId String
   session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  
-  userId    String
-  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   // AI Response metadata
-  aiModel       String?
-  tokenCount    Int?
-  responseTime  Int? // in milliseconds
-  
+  aiModel      String?
+  tokenCount   Int?
+  responseTime Int? // in milliseconds
+
   // File attachments
   attachments MessageAttachment[]
 
@@ -210,7 +211,7 @@ model MessageAttachment {
   id        String @id @default(cuid())
   messageId String
   fileId    String
-  
+
   message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
   file    File    @relation(fields: [fileId], references: [id], onDelete: Cascade)
 
@@ -220,37 +221,37 @@ model MessageAttachment {
 // ==================== FILES ====================
 
 model File {
-  id          String   @id @default(cuid())
-  filename    String
+  id           String     @id @default(cuid())
+  filename     String
   originalName String
-  mimeType    String
-  size        Int
-  url         String
-  storageKey  String
-  status      FileStatus @default(UPLOADING)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
+  mimeType     String
+  size         Int
+  url          String
+  storageKey   String
+  status       FileStatus @default(UPLOADING)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
   // File content stored in database (for Railway without persistent storage)
-  content     Bytes?
-  
+  content Bytes?
+
   // Relations
-  userId    String
-  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   sessionId String?
   session   ChatSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
-  
+
   // Metadata
-  metadata  Json?
-  
+  metadata Json?
+
   // OCR & Processing
   extractedText String? @db.Text
   ocrStatus     String?
-  
+
   // Vector embedding for semantic search
-  embedding     Unsupported("vector(1536)")?
-  
+  embedding Unsupported("vector(1536)")?
+
   // Relations
   attachments MessageAttachment[]
 
@@ -274,14 +275,14 @@ model Note {
   content   String   @db.Text
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   // Relations
-  userId    String
-  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   sessionId String?
   session   ChatSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
-  
+
   // Version history
   versions NoteVersion[]
 
@@ -294,7 +295,7 @@ model NoteVersion {
   noteId    String
   content   String   @db.Text
   createdAt DateTime @default(now())
-  
+
   note Note @relation(fields: [noteId], references: [id], onDelete: Cascade)
 
   @@index([noteId])
@@ -313,10 +314,10 @@ model AIInteraction {
   cost         Float?
   latency      Int // in milliseconds
   createdAt    DateTime @default(now())
-  
+
   // Trace ID for LangSmith
-  traceId      String?
-  
+  traceId String?
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
@@ -335,7 +336,7 @@ model Notification {
   read      Boolean  @default(false)
   data      Json?
   createdAt DateTime @default(now())
-  
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
@@ -345,38 +346,38 @@ model Notification {
 // ==================== CHAT ANALYTICS ====================
 
 model ChatAnalytics {
-  id              String   @id @default(cuid())
-  userId          String?  // null for anonymous users
-  sessionId       String?
-  
+  id        String  @id @default(cuid())
+  userId    String? // null for anonymous users
+  sessionId String?
+
   // Message details
-  messageId       String?
-  role            String   // user or assistant
-  
+  messageId String?
+  role      String // user or assistant
+
   // Model & Routing
-  model           String
-  modelProvider   String   // openai, anthropic, groq, ollama, etc.
-  isLocal         Boolean  @default(false)
+  model            String
+  modelProvider    String // openai, anthropic, groq, ollama, etc.
+  isLocal          Boolean @default(false)
   sensitivityLevel String? // public, internal, confidential, restricted
-  piiDetected     Boolean  @default(false)
-  
+  piiDetected      Boolean @default(false)
+
   // Token usage
-  inputTokens     Int      @default(0)
-  outputTokens    Int      @default(0)
-  
+  inputTokens  Int @default(0)
+  outputTokens Int @default(0)
+
   // Cost tracking (in USD)
-  actualCost      Float    @default(0)
-  cloudCost       Float    @default(0) // What it would have cost on cloud
-  costSaved       Float    @default(0) // cloudCost - actualCost
-  
+  actualCost Float @default(0)
+  cloudCost  Float @default(0) // What it would have cost on cloud
+  costSaved  Float @default(0) // cloudCost - actualCost
+
   // Performance
-  latencyMs       Int      @default(0)
-  routingTimeMs   Float    @default(0)
-  
+  latencyMs     Int   @default(0)
+  routingTimeMs Float @default(0)
+
   // Audit
-  auditId         String?
-  
-  createdAt       DateTime @default(now())
+  auditId String?
+
+  createdAt DateTime @default(now())
 
   @@index([userId])
   @@index([sessionId])
@@ -402,4 +403,89 @@ model AuditLog {
   @@index([action])
   @@index([entity])
   @@index([createdAt])
+}
+
+// ==================== KNOWLEDGE GRAPH ====================
+
+model KnowledgeNode {
+  id          String   @id @default(cuid())
+  sessionId   String?
+  type        NodeType
+  label       String
+  description String?  @db.Text
+  properties  Json? // Additional metadata like IPC section details, dates, etc.
+  position    Json? // {x, y} for graph visualization
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Source tracking - where was this entity extracted from?
+  sourceType String? // message, note, file
+  sourceId   String? // ID of the source
+
+  // Relations
+  session       ChatSession?    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  outgoingEdges KnowledgeEdge[] @relation("SourceNode")
+  incomingEdges KnowledgeEdge[] @relation("TargetNode")
+
+  @@index([sessionId])
+  @@index([type])
+  @@index([label])
+}
+
+enum NodeType {
+  PERSON // Defendant, plaintiff, witness, lawyer, judge
+  ORGANIZATION // Court, company, government body
+  LAW_REFERENCE // IPC sections, Acts, case citations
+  DATE // Important dates in the case
+  LOCATION // Places mentioned
+  CLAIM // Key claims or allegations
+  EVIDENCE // Evidence items
+  EVENT // Key events in the timeline
+  DOCUMENT // Referenced documents
+  CONCEPT // Legal concepts, terms
+}
+
+model KnowledgeEdge {
+  id         String   @id @default(cuid())
+  sourceId   String
+  targetId   String
+  relation   String // filed_against, represented_by, cited_in, related_to, etc.
+  label      String? // Display label for the edge
+  weight     Float    @default(1.0)
+  properties Json? // Additional edge metadata
+  createdAt  DateTime @default(now())
+
+  // Relations
+  source KnowledgeNode @relation("SourceNode", fields: [sourceId], references: [id], onDelete: Cascade)
+  target KnowledgeNode @relation("TargetNode", fields: [targetId], references: [id], onDelete: Cascade)
+
+  @@index([sourceId])
+  @@index([targetId])
+  @@index([relation])
+}
+
+// Store the full knowledge graph snapshot for a session
+model KnowledgeGraph {
+  id          String      @id @default(cuid())
+  sessionId   String      @unique
+  name        String?
+  status      GraphStatus @default(PENDING)
+  summary     String?     @db.Text // AI-generated summary of the case
+  lastBuiltAt DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Graph statistics
+  nodeCount Int @default(0)
+  edgeCount Int @default(0)
+
+  @@index([sessionId])
+  @@index([status])
+}
+
+enum GraphStatus {
+  PENDING
+  BUILDING
+  READY
+  ERROR
 }

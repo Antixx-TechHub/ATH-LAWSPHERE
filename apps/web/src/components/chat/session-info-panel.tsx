@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { formatFileSize } from "../../lib/utils";
+import { Button } from "../ui/button";
 import {
   FileText,
   Image,
@@ -10,6 +12,7 @@ import {
   Users,
   AlertCircle,
   ShieldCheck,
+  Network,
 } from "lucide-react";
 
 interface SessionFile {
@@ -71,8 +74,16 @@ export function SessionInfoPanel({
   return (
     <div className="h-full bg-white dark:bg-neutral-900 rounded-lg border border-neutral-200 dark:border-neutral-800 p-4 flex flex-col">
       <h3 className="font-semibold mb-4">Session Info</h3>
-      
+
       <div className="flex-1 space-y-4 overflow-y-auto">
+        {/* Knowledge Map Button */}
+        <Link href={`/dashboard/knowledge-map?session=${sessionId}`}>
+          <Button variant="outline" className="w-full justify-start gap-2" size="sm">
+            <Network className="h-4 w-4 text-primary-600" />
+            <span>View Knowledge Map</span>
+          </Button>
+        </Link>
+
         {/* Participants */}
         <div className="p-3 rounded-lg bg-neutral-50 dark:bg-neutral-800">
           <div className="flex items-center gap-2 mb-2">

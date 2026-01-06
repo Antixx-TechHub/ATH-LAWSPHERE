@@ -156,50 +156,60 @@ async def process_file(file_id: str, content: bytes, mime_type: str):
     """Background task to process uploaded file and save extracted text."""
     from app.db import SessionLocal
     from sqlalchemy import update
-    
+    import traceback
+
     try:
         extracted_text = ""
-        print(f"Processing file {file_id} with mime_type: {mime_type}")
-        
+        print(f"[FILE_PROCESS] Starting processing for file {file_id} with mime_type: {mime_type}")
+
         # Extract text based on file type
         if mime_type == "application/pdf" and HAS_PDF_SUPPORT:
-            print(f"Extracting PDF text for {file_id}")
+            print(f"[FILE_PROCESS] Extracting PDF text for {file_id}")
             extracted_text = extract_text_from_pdf(content)
         elif mime_type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document" and HAS_DOCX_SUPPORT:
-            print(f"Extracting DOCX text for {file_id}")
+            print(f"[FILE_PROCESS] Extracting DOCX text for {file_id}")
             extracted_text = extract_text_from_docx(content)
         elif mime_type == "application/msword":
             # Legacy .doc files - try to extract what we can
-            print(f"Attempting legacy DOC extraction for {file_id}")
+            print(f"[FILE_PROCESS] Attempting legacy DOC extraction for {file_id}")
             extracted_text = extract_text_from_doc(content)
         elif mime_type in ["text/plain", "text/markdown", "text/csv"]:
+            print(f"[FILE_PROCESS] Decoding text file {file_id}")
             extracted_text = content.decode('utf-8', errors='ignore')
+            print(f"[FILE_PROCESS] Decoded {len(extracted_text)} chars from text file")
         elif mime_type.startswith("image/") and HAS_OCR_SUPPORT:
-            print(f"Running OCR on image {file_id}")
+            print(f"[FILE_PROCESS] Running OCR on image {file_id}")
             extracted_text = extract_text_from_image(content)
         else:
             # For unsupported types, just mark as ready
             extracted_text = "[Binary file - no text extraction available]"
-        
-        print(f"Extracted {len(extracted_text)} chars from {file_id}")
-        
+
+        print(f"[FILE_PROCESS] Extracted {len(extracted_text)} chars from {file_id}")
+        if extracted_text:
+            print(f"[FILE_PROCESS] Content preview: {extracted_text[:200]}...")
+
         is_sensitive = False
         pii_detected = False
-        
+
         # Scan for sensitive content
         if extracted_text and not extracted_text.startswith("["):
             scan_result = privacy_scanner.scan(extracted_text)
             # ScanResult is a dataclass - use attribute access
             is_sensitive = scan_result.force_local
             pii_detected = len(scan_result.pii_found) > 0
-            
-            print(f"File {file_id} processed:")
-            print(f"  - Sensitive: {is_sensitive}")
-            print(f"  - PII Detected: {pii_detected}")
-            print(f"  - Sensitivity Score: {scan_result.confidence_score}")
-            print(f"  - Text Length: {len(extracted_text)} chars")
-        
+
+            print(f"[FILE_PROCESS] File {file_id} scan results:")
+            print(f"[FILE_PROCESS]   - Sensitive: {is_sensitive}")
+            print(f"[FILE_PROCESS]   - PII Detected: {pii_detected}")
+            print(f"[FILE_PROCESS]   - Sensitivity Score: {scan_result.confidence_score}")
+
         # Update database with extracted text and processing results
+        print(f"[FILE_PROCESS] Updating database for file {file_id}...")
+        
+        if SessionLocal is None:
+            print(f"[FILE_PROCESS] ERROR: SessionLocal is None - database not initialized!")
+            return
+            
         async with SessionLocal() as db:
             from app.db_models import SessionFile
             stmt = (
@@ -212,26 +222,28 @@ async def process_file(file_id: str, content: bytes, mime_type: str):
                     pii_detected=pii_detected,
                 )
             )
-            await db.execute(stmt)
+            result = await db.execute(stmt)
             await db.commit()
-            print(f"File {file_id} saved to database")
-            
+            print(f"[FILE_PROCESS] File {file_id} saved to database - rows affected: {result.rowcount}")
+
     except Exception as e:
         # Log error and update status to error
-        print(f"Error processing file {file_id}: {str(e)}")
+        print(f"[FILE_PROCESS] ERROR processing file {file_id}: {str(e)}")
+        print(f"[FILE_PROCESS] Traceback: {traceback.format_exc()}")
         try:
-            async with SessionLocal() as db:
-                from app.db_models import SessionFile
-                stmt = (
-                    update(SessionFile)
-                    .where(SessionFile.id == file_id)
-                    .values(status="error")
-                )
-                await db.execute(stmt)
-                await db.commit()
+            if SessionLocal is not None:
+                async with SessionLocal() as db:
+                    from app.db_models import SessionFile
+                    stmt = (
+                        update(SessionFile)
+                        .where(SessionFile.id == file_id)
+                        .values(status="error")
+                    )
+                    await db.execute(stmt)
+                    await db.commit()
+                    print(f"[FILE_PROCESS] Updated file {file_id} status to error")
         except Exception as db_error:
-            print(f"Failed to update error status: {str(db_error)}")
-
+            print(f"[FILE_PROCESS] Failed to update error status: {str(db_error)}")
 
 def extract_text_from_pdf(content: bytes) -> str:
     """Extract text from PDF file."""

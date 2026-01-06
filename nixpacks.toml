@@ -1,5 +1,5 @@
 # Nixpacks configuration for Railway
-# Force fresh build: 2026-01-06-v5
+# Force fresh build: 2026-01-06-v6
 
 [phases.setup]
 nixPkgs = ["nodejs_20", "openssl"]
@@ -8,11 +8,14 @@ nixPkgs = ["nodejs_20", "openssl"]
 cmds = ["npm ci --workspaces --include-workspace-root || npm install --workspaces --include-workspace-root"]
 
 [phases.build]
+# Skip cache clearing, just build fresh
 cmds = [
-    "rm -rf apps/web/.next/cache/* node_modules/.cache/* 2>/dev/null || true",
     "cd apps/web && npx prisma generate",
-    "cd apps/web && npm run build"
+    "cd apps/web && NODE_OPTIONS='--max-old-space-size=4096' npx next build"
 ]
+
+# Disable caching to force fresh module resolution
+cacheDirectories = []
 
 [start]
 cmd = "cd apps/web && npx prisma migrate deploy && node server.js"

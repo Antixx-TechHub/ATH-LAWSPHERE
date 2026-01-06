@@ -252,8 +252,10 @@ async function getSessionContext(sessionId: string) {
           select: {
             id: true,
             filename: true,
+            originalName: true,
             mimeType: true,
             size: true,
+            status: true,
             extractedText: true,
             createdAt: true
           }
@@ -300,9 +302,12 @@ async function getSessionContext(sessionId: string) {
       messages: messages,
       files: session.files.map(f => ({
         id: f.id,
+        name: f.originalName || f.filename,
         filename: f.filename,
         mime_type: f.mimeType,
         size: f.size,
+        status: f.status?.toLowerCase() || 'ready',  // Chat panel expects lowercase status
+        extracted_text: f.extractedText || null,     // Chat panel needs the actual text!
         has_text: !!f.extractedText,
         created_at: f.createdAt.toISOString()
       })),

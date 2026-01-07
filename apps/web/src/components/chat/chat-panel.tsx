@@ -5,10 +5,36 @@
  * Updated: 2026-01-07 - Fixed import order for dynamic imports
  */
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import {
+  Bot,
+  Cloud,
+  Copy,
+  FileText,
+  Loader2,
+  Lock,
+  Network,
+  Paperclip,
+  RotateCcw,
+  Send,
+  ShieldCheck,
+  Sparkles,
+  ThumbsDown,
+  ThumbsUp,
+  User,
+  X
+} from "lucide-react";
+import { useSession } from "next-auth/react";
+import dynamic from "next/dynamic";
+import { useCallback, useEffect, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import { Avatar, AvatarFallback } from "../../components/ui/avatar";
 import { Button } from "../../components/ui/button";
-import { Textarea } from "../../components/ui/textarea";
-import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "../../components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -16,48 +42,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../components/ui/select";
-import {
-  Send,
-  Paperclip,
-  Bot,
-  User,
-  Copy,
-  ThumbsUp,
-  ThumbsDown,
-  RotateCcw,
-  Sparkles,
-  Shield,
-  ShieldCheck,
-  Cloud,
-  Lock,
-  FileText,
-  Loader2,
-  X,
-  Network,
-} from "lucide-react";
-import dynamic from "next/dynamic";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "../../components/ui/dialog";
-import { cn } from "../../lib/utils";
-import ReactMarkdown from "react-markdown";
-import { TrustBadge } from "./trust-badge";
-import { useSession } from "next-auth/react";
+import { Textarea } from "../../components/ui/textarea";
 import { aiClient } from "../../lib/api/ai-client";
+import { cn } from "../../lib/utils";
+
+// Loading spinner component for dynamic imports
+function KnowledgeGraphLoading() {
+  return (
+    <div className="flex items-center justify-center h-[400px] bg-muted/30 rounded-lg">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    </div>
+  );
+}
 
 // Dynamically import KnowledgeGraphWrapper to avoid SSR issues
 const KnowledgeGraphWrapper = dynamic(
   () => import("../../components/knowledge-graph").then((mod) => mod.KnowledgeGraphWrapper),
   {
     ssr: false,
-    loading: () => (
-      <div className="flex items-center justify-center h-[400px] bg-muted/30 rounded-lg">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    ),
+    loading: KnowledgeGraphLoading,
   }
 );
 
@@ -923,3 +926,6 @@ USER QUESTION: ${input}`;
           </div>
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}

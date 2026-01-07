@@ -718,9 +718,6 @@ async def create_trust_chat_completion(request: TrustChatRequest, db: Optional[A
                 await db.commit()
             except Exception as persist_error:
                 logger.warning("message_persistence_failed", error=str(persist_error))
-                # Continue - response already generated
-            logger.warning("message_persistence_failed", error=str(persist_error))
-            # Continue - response already generated
 
         # DEBUG: Log full response object
         print(f"[TRUST_CHAT] Response object message.content: {response_obj.message.content[:200] if response_obj.message.content else 'EMPTY'}")

@@ -95,16 +95,6 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
         await session.close()
 
 
-async def get_db() -> AsyncGenerator[AsyncSession, None]:
-    """FastAPI dependency for database session injection."""
-    session: AsyncSession = SessionLocal()
-    try:
-        yield session
-    finally:
-        await session.close()
-
-
-
 
 async def get_optional_db() -> AsyncGenerator[Optional[AsyncSession], None]:
     """
@@ -112,17 +102,24 @@ async def get_optional_db() -> AsyncGenerator[Optional[AsyncSession], None]:
     Use this for endpoints that should work even without a database.
     """
     global SessionLocal
+    
+    # If no session factory, yield None
     if SessionLocal is None:
         yield None
         return
-
+    
+    # Try to create a session
     session: Optional[AsyncSession] = None
     try:
         session = SessionLocal()
-        yield session
     except Exception as e:
-        logger.warning("database_session_failed", error=str(e))
+        logger.warning("database_session_create_failed", error=str(e))
         yield None
+        return
+    
+    # Yield the session and clean up
+    try:
+        yield session
     finally:
         if session is not None:
             try:

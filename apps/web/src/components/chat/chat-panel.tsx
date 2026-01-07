@@ -1,5 +1,10 @@
 "use client";
 
+/**
+ * ChatPanel Component - AI Legal Assistant
+ * Updated: 2026-01-07 - Fixed import order for dynamic imports
+ */
+
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "../../components/ui/button";
 import { Textarea } from "../../components/ui/textarea";

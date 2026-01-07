@@ -1,6 +1,7 @@
 """
 Knowledge Graph API endpoints for entity extraction and graph building.
 Uses LLM to extract legal entities and relationships from text.
+Now uses Groq (free tier) for extraction.
 """
 
 from typing import Optional, List, Dict, Any
@@ -10,7 +11,7 @@ from enum import Enum
 import json
 import re
 
-from app.models.llm_router import LLMRouter, ModelType
+from app.models.groq_client import get_groq_client
 from app.config import settings
 
 router = APIRouter()
@@ -144,7 +145,7 @@ def parse_llm_json(response_text: str) -> dict:
             json_str = json_match.group(0)
         else:
             return {"nodes": [], "edges": [], "summary": ""}
-    
+
     try:
         return json.loads(json_str)
     except json.JSONDecodeError:
@@ -154,27 +155,40 @@ def parse_llm_json(response_text: str) -> dict:
 @router.post("/extract", response_model=ExtractionResponse)
 async def extract_entities(request: ExtractionRequest):
     """
-    Extract legal entities and relationships from text using LLM.
+    Extract legal entities and relationships from text using Groq (free LLM).
     """
     if not request.text or len(request.text.strip()) < 10:
         return ExtractionResponse(nodes=[], edges=[], summary="")
-    
+
     try:
-        # Initialize LLM router and get model
-        llm_router = LLMRouter()
-        model_type = ModelType(settings.DEFAULT_MODEL)
-        llm = llm_router.get_model(model_type)
+        # Get Groq client (free tier)
+        groq_client = get_groq_client()
         
+        if not groq_client.is_available:
+            raise HTTPException(
+                status_code=503,
+                detail="Groq API not configured. Please set GROQ_API_KEY."
+            )
+
         # Build the prompt
         prompt = EXTRACTION_PROMPT + request.text[:15000]  # Limit text length
+
+        # Call Groq for extraction (using Llama 3.1 70B for better quality)
+        response = await groq_client.chat_completion(
+            messages=[
+                {"role": "system", "content": "You are a legal document analyst. Always respond with valid JSON."},
+                {"role": "user", "content": prompt}
+            ],
+            model="llama-3.3-70b-versatile",  # Best quality model
+            temperature=0.1,  # Low temperature for structured output
+            max_tokens=4096
+        )
         
-        # Call LLM for extraction
-        response = await llm.ainvoke(prompt)
-        response_text = response.content if hasattr(response, 'content') else str(response)
-        
+        response_text = response.get("content", "")
+
         # Parse the JSON response
         result = parse_llm_json(response_text)
-        
+
         # Convert to response model
         nodes = []
         for node_data in result.get("nodes", []):
@@ -187,7 +201,7 @@ async def extract_entities(request: ExtractionRequest):
                 ))
             except (ValueError, KeyError):
                 continue
-        
+
         edges = []
         for edge_data in result.get("edges", []):
             try:
@@ -199,13 +213,15 @@ async def extract_entities(request: ExtractionRequest):
                 ))
             except (ValueError, KeyError):
                 continue
-        
+
         return ExtractionResponse(
             nodes=nodes,
             edges=edges,
             summary=result.get("summary", "")
         )
-        
+
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"[Knowledge Graph] Extraction error: {e}")
         raise HTTPException(status_code=500, detail=f"Entity extraction failed: {str(e)}")
@@ -219,7 +235,7 @@ async def build_knowledge_graph(request: BuildGraphRequest):
     try:
         # Combine all text sources
         all_text_parts = []
-        
+
         # Add messages
         for msg in request.messages:
             content = msg.get("content", "")
@@ -228,23 +244,23 @@ async def build_knowledge_graph(request: BuildGraphRequest):
                 all_text_parts.append(f"[User Message] {content}")
             elif content and role == "assistant":
                 all_text_parts.append(f"[AI Response] {content[:500]}")  # Limit AI responses
-        
+
         # Add notes
         for note in request.notes:
             title = note.get("title", "")
             content = note.get("content", "")
             if content:
                 all_text_parts.append(f"[Note: {title}] {content}")
-        
+
         # Add file extracted text
         for file in request.files:
             name = file.get("originalName", file.get("filename", ""))
             extracted = file.get("extractedText", "")
             if extracted:
                 all_text_parts.append(f"[Document: {name}] {extracted[:3000]}")  # Limit per file
-        
+
         combined_text = "\n\n".join(all_text_parts)
-        
+
         if len(combined_text.strip()) < 50:
             return BuildGraphResponse(
                 session_id=request.session_id,
@@ -254,14 +270,14 @@ async def build_knowledge_graph(request: BuildGraphRequest):
                 node_count=0,
                 edge_count=0
             )
-        
+
         # Extract entities from combined text
         extraction_request = ExtractionRequest(
             text=combined_text,
             session_id=request.session_id
         )
         extraction_result = await extract_entities(extraction_request)
-        
+
         return BuildGraphResponse(
             session_id=request.session_id,
             nodes=extraction_result.nodes,
@@ -270,7 +286,9 @@ async def build_knowledge_graph(request: BuildGraphRequest):
             node_count=len(extraction_result.nodes),
             edge_count=len(extraction_result.edges)
         )
-        
+
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"[Knowledge Graph] Build error: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to build knowledge graph: {str(e)}")

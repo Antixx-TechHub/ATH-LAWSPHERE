@@ -1,5 +1,5 @@
 # Nixpacks configuration for Railway
-# Force fresh build: 2026-01-06-v7
+# Force fresh build: 2026-01-07-v8-imports-fix
 
 [phases.setup]
 nixPkgs = ["nodejs_20", "openssl"]

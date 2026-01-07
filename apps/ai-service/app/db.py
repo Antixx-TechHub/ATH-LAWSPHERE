@@ -4,7 +4,7 @@ Adds a resilient fallback to SQLite when Postgres is unavailable.
 """
 
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Optional
 import os
 import structlog
 
@@ -104,7 +104,9 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         await session.close()
 
 
-async def get_optional_db():
+
+
+async def get_optional_db() -> AsyncGenerator[Optional[AsyncSession], None]:
     """
     FastAPI dependency that provides a database session or None if unavailable.
     Use this for endpoints that should work even without a database.
@@ -113,13 +115,17 @@ async def get_optional_db():
     if SessionLocal is None:
         yield None
         return
-    
+
+    session: Optional[AsyncSession] = None
     try:
-        session: AsyncSession = SessionLocal()
-        try:
-            yield session
-        finally:
-            await session.close()
+        session = SessionLocal()
+        yield session
     except Exception as e:
         logger.warning("database_session_failed", error=str(e))
         yield None
+    finally:
+        if session is not None:
+            try:
+                await session.close()
+            except Exception:
+                pass

@@ -95,6 +95,16 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
         await session.close()
 
 
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    """FastAPI dependency for database session injection."""
+    session: AsyncSession = SessionLocal()
+    try:
+        yield session
+    finally:
+        await session.close()
+
+
+
 
 async def get_optional_db() -> AsyncGenerator[Optional[AsyncSession], None]:
     """
@@ -103,12 +113,10 @@ async def get_optional_db() -> AsyncGenerator[Optional[AsyncSession], None]:
     """
     global SessionLocal
     
-    # If no session factory, yield None
     if SessionLocal is None:
         yield None
         return
     
-    # Try to create a session
     session: Optional[AsyncSession] = None
     try:
         session = SessionLocal()
@@ -117,7 +125,6 @@ async def get_optional_db() -> AsyncGenerator[Optional[AsyncSession], None]:
         yield None
         return
     
-    # Yield the session and clean up
     try:
         yield session
     finally:

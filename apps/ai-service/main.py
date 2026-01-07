@@ -29,6 +29,7 @@ from app.config import settings
 from app.api import chat, files, search, health
 from app.api import trust_chat, sessions
 from app.api import knowledge_graph
+from app.api import similarity
 from app.middleware.logging import LoggingMiddleware
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.db import init_db
@@ -103,6 +104,7 @@ app.include_router(sessions.router, prefix="/api/sessions", tags=["Sessions"])
 app.include_router(files.router, prefix="/api/files", tags=["Files"])
 app.include_router(search.router, prefix="/api/search", tags=["Search"])
 app.include_router(knowledge_graph.router, prefix="/api/knowledge-graph", tags=["Knowledge Graph"])
+app.include_router(similarity.router, prefix="/api/similarity", tags=["Similarity"])
 
 
 @app.get("/_health")

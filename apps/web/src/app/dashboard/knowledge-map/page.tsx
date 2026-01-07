@@ -57,11 +57,25 @@ export default function KnowledgeMapPage() {
       const response = await fetch('/api/sessions');
       if (response.ok) {
         const data = await response.json();
-        setSessions(data.sessions || []);
-        
+        // API returns array directly with snake_case fields, transform to expected format
+        const rawSessions = Array.isArray(data) ? data : (data.sessions || []);
+        const transformedSessions: SessionItem[] = rawSessions.map((s: Record<string, unknown>) => ({
+          id: s.id as string,
+          name: (s.name || s.title || 'Untitled Session') as string,
+          createdAt: (s.createdAt || s.created_at || new Date().toISOString()) as string,
+          updatedAt: (s.updatedAt || s.updated_at || new Date().toISOString()) as string,
+          _count: s._count as SessionItem['_count'] || {
+            messages: (s.message_count as number) || 0,
+            notes: 0,
+            files: (s.file_count as number) || 0
+          },
+          hasGraph: s.hasGraph as boolean
+        }));
+        setSessions(transformedSessions);
+
         // If sessionId is in URL, select that session
         if (sessionId) {
-          const session = data.sessions?.find((s: SessionItem) => s.id === sessionId);
+          const session = transformedSessions.find((s: SessionItem) => s.id === sessionId);
           if (session) {
             setSelectedSession(session);
           }

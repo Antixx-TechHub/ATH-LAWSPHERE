@@ -57,3 +57,10 @@ aiofiles>=23.2.1
 python-magic>=0.4.27
 tenacity>=8.2.3
 python-dotenv>=1.0.0
+
+# Web Scraping (for Indian Kanoon)
+beautifulsoup4>=4.12.0
+lxml>=5.0.0
+
+# Similarity Engine
+numpy>=1.26.0

@@ -37,6 +37,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../../components/ui/dialog";
+import { cn } from "../../lib/utils";
+import ReactMarkdown from "react-markdown";
+import { TrustBadge } from "./trust-badge";
+import { useSession } from "next-auth/react";
+import { aiClient } from "../../lib/api/ai-client";
 
 // Dynamically import KnowledgeGraphWrapper to avoid SSR issues
 const KnowledgeGraphWrapper = dynamic(
@@ -50,11 +55,6 @@ const KnowledgeGraphWrapper = dynamic(
     ),
   }
 );
-import { cn } from "../../lib/utils";
-import ReactMarkdown from "react-markdown";
-import { TrustBadge } from "./trust-badge";
-import { useSession } from "next-auth/react";
-import { aiClient } from "../../lib/api/ai-client";
 
 // Attached document interface
 interface AttachedDocument {

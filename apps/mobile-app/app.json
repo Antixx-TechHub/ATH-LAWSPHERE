@@ -7,7 +7,7 @@
     "icon": "./assets/images/icon.png",
     "scheme": "lawsphere",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
@@ -40,9 +40,11 @@
     "extra": {
       "apiUrl": "https://ath-lawsphere.antixxtechhub.in",
       "aiApiUrl": "https://ai-service-production-870d.up.railway.app",
+      "router": {},
       "eas": {
-        "projectId": "YOUR_PROJECT_ID"
+        "projectId": "f1d92eeb-737e-4c92-a2c2-260a60ac0a20"
       }
-    }
+    },
+    "owner": "antixxtechhub"
   }
 }

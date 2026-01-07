@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { cn } from "../../lib/utils";
 import {
   Home,
@@ -18,6 +19,8 @@ import {
   BarChart3,
   Network,
   X,
+  Brain,
+  Shield,
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 
@@ -38,6 +41,10 @@ const navItems = [
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
 ];
 
+const adminNavItems = [
+  { href: "/dashboard/admin/learning", label: "AI Learning", icon: Brain },
+];
+
 const bottomNavItems = [
   { href: "/dashboard/privacy", label: "Privacy", icon: ShieldCheck },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
@@ -45,6 +52,23 @@ const bottomNavItems = [
 
 export function Sidebar({ collapsed, onToggle, isMobile, onClose }: SidebarProps) {
   const pathname = usePathname();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Check if user is admin
+  useEffect(() => {
+    async function checkAdminStatus() {
+      try {
+        const res = await fetch('/api/auth/check-admin');
+        if (res.ok) {
+          const data = await res.json();
+          setIsAdmin(data.isAdmin);
+        }
+      } catch (error) {
+        console.error('Failed to check admin status:', error);
+      }
+    }
+    checkAdminStatus();
+  }, []);
 
   const handleNavClick = () => {
     if (isMobile && onClose) {
@@ -86,7 +110,7 @@ export function Sidebar({ collapsed, onToggle, isMobile, onClose }: SidebarProps
           )}
         </Link>
       </div>
-      
+
       {/* Collapse Toggle / Close Button */}
       <div className="absolute top-2 right-2">
         <Button
@@ -130,6 +154,42 @@ export function Sidebar({ collapsed, onToggle, isMobile, onClose }: SidebarProps
               </Link>
             );
           })}
+
+          {/* Admin Section */}
+          {isAdmin && (
+            <>
+              {(!collapsed || isMobile) && (
+                <div className="pt-3 pb-1">
+                  <div className="flex items-center gap-2 px-2.5 text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
+                    <Shield className="h-3 w-3" />
+                    Admin
+                  </div>
+                </div>
+              )}
+              {adminNavItems.map((item) => {
+                const isActive = pathname === item.href;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={handleNavClick}
+                    className={cn(
+                      "flex items-center gap-2 px-2.5 py-1.5 rounded-md transition-colors",
+                      isActive
+                        ? "bg-amber-100 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400"
+                        : "text-neutral-600 dark:text-neutral-400 hover:bg-amber-50 dark:hover:bg-amber-900/10",
+                      collapsed && !isMobile && "justify-center"
+                    )}
+                  >
+                    <item.icon className="h-4 w-4 flex-shrink-0" />
+                    {(!collapsed || isMobile) && (
+                      <span className="font-medium text-xs">{item.label}</span>
+                    )}
+                  </Link>
+                );
+              })}
+            </>
+          )}
         </div>
 
         {/* Bottom Navigation */}

@@ -40,15 +40,17 @@ export default function ChatScreen() {
     setLoading(true);
 
     try {
-      const response = await aiApi.post('/api/v1/chat', {
-        message: userMessage.content,
+      // Use the trust chat endpoint for privacy-first AI with free Groq models
+      const response = await aiApi.post('/api/chat/trust/completions', {
+        messages: [{ role: 'user', content: userMessage.content }],
         session_id: sessionId,
+        force_local: true,  // Use free open-source models
       });
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: response.data.response || response.data.message,
+        content: response.data.message?.content || response.data.response || 'No response',
         timestamp: new Date(),
       };
 

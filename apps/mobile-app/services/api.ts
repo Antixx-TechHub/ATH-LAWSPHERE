@@ -78,7 +78,11 @@ export const authService = {
 
 export const chatService = {
   sendMessage: (message: string, sessionId?: string) =>
-    aiApi.post('/api/v1/chat', { message, session_id: sessionId }),
+    aiApi.post('/api/chat/trust/completions', { 
+      messages: [{ role: 'user', content: message }],
+      session_id: sessionId,
+      force_local: true  // Use free open-source models
+    }),
   
   getSessions: () => api.get('/api/chat/sessions'),
   

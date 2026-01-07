@@ -1,22 +1,18 @@
 "use client";
 
+import {
+    Home,
+    Library,
+    Users,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "../../lib/utils";
-import {
-  Home,
-  MessageSquare,
-  Library,
-  Users,
-  Network,
-  MoreHorizontal,
-} from "lucide-react";
 
 const mobileNavItems = [
   { href: "/dashboard", label: "Home", icon: Home },
-  { href: "/dashboard/chat", label: "Chat", icon: MessageSquare },
+  { href: "/dashboard/sessions", label: "Sessions", icon: Users },
   { href: "/dashboard/files", label: "Files", icon: Library },
-  { href: "/dashboard/knowledge-map", label: "Map", icon: Network },
 ];
 
 export function MobileNav() {

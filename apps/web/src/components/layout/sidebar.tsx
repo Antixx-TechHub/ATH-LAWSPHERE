@@ -1,28 +1,25 @@
 "use client";
 
-import Link from "next/link";
+import {
+    BarChart3,
+    Brain,
+    ChevronLeft,
+    ChevronRight,
+    Home,
+    Library,
+    Settings,
+    Shield,
+    ShieldCheck,
+    StickyNote,
+    Users,
+    X,
+} from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { cn } from "../../lib/utils";
-import {
-  Home,
-  Library,
-  Settings,
-  MessageSquare,
-  FileText,
-  StickyNote,
-  ChevronLeft,
-  ChevronRight,
-  Users,
-  ShieldCheck,
-  BarChart3,
-  Network,
-  X,
-  Brain,
-  Shield,
-} from "lucide-react";
 import { Button } from "../../components/ui/button";
+import { cn } from "../../lib/utils";
 
 interface SidebarProps {
   collapsed: boolean;
@@ -33,11 +30,9 @@ interface SidebarProps {
 
 const navItems = [
   { href: "/dashboard", label: "Home", icon: Home },
-  { href: "/dashboard/chat", label: "Chat", icon: MessageSquare },
+  { href: "/dashboard/sessions", label: "Sessions", icon: Users },
   { href: "/dashboard/files", label: "Library", icon: Library },
   { href: "/dashboard/notes", label: "Notes", icon: StickyNote },
-  { href: "/dashboard/sessions", label: "Sessions", icon: Users },
-  { href: "/dashboard/knowledge-map", label: "Knowledge Map", icon: Network },
   { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
 ];
 

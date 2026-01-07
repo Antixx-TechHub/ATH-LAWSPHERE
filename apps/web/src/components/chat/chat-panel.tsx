@@ -28,7 +28,28 @@ import {
   FileText,
   Loader2,
   X,
+  Network,
 } from "lucide-react";
+import dynamic from "next/dynamic";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "../../components/ui/dialog";
+
+// Dynamically import KnowledgeGraphWrapper to avoid SSR issues
+const KnowledgeGraphWrapper = dynamic(
+  () => import("../../components/knowledge-graph").then((mod) => mod.KnowledgeGraphWrapper),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex items-center justify-center h-[400px] bg-muted/30 rounded-lg">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    ),
+  }
+);
 import { cn } from "../../lib/utils";
 import ReactMarkdown from "react-markdown";
 import { TrustBadge } from "./trust-badge";
@@ -112,6 +133,7 @@ export function ChatPanel({ sessionId, onSessionUpdate, refreshSignal }: ChatPan
   const [sessionCost, setSessionCost] = useState({ totalInr: 0, savedInr: 0, queries: 0 });
   const [attachedDocs, setAttachedDocs] = useState<AttachedDocument[]>([]);
   const [hasProcessingFiles, setHasProcessingFiles] = useState(false);
+  const [showKnowledgeGraph, setShowKnowledgeGraph] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -754,6 +776,15 @@ USER QUESTION: ${input}`;
               {/* AI Message Actions */}
               {message.type === "ai" && (
                 <div className="flex items-center gap-1 mt-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    title="View Knowledge Graph"
+                    onClick={() => setShowKnowledgeGraph(true)}
+                  >
+                    <Network className="h-3 w-3" />
+                  </Button>
                   <Button variant="ghost" size="icon" className="h-7 w-7">
                     <Copy className="h-3 w-3" />
                   </Button>
@@ -872,6 +903,18 @@ USER QUESTION: ${input}`;
             : "Press Enter to send, Shift + Enter for new line • Click 📎 to attach .txt files"}
         </p>
       </form>
-    </div>
-  );
-}
+
+      {/* Knowledge Graph Modal */}
+      <Dialog open={showKnowledgeGraph} onOpenChange={setShowKnowledgeGraph}>
+        <DialogContent className="max-w-5xl w-[95vw] h-[80vh] p-0">
+          <DialogHeader className="px-6 pt-6 pb-2">
+            <DialogTitle className="flex items-center gap-2">
+              <Network className="h-5 w-5 text-primary-600" />
+              Knowledge Graph - Session Analysis
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 min-h-0 px-6 pb-6">
+            <KnowledgeGraphWrapper sessionId={sessionId} />
+          </div>
+        </DialogContent>
+      </Dialog>

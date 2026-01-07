@@ -102,3 +102,24 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         yield session
     finally:
         await session.close()
+
+
+async def get_optional_db():
+    """
+    FastAPI dependency that provides a database session or None if unavailable.
+    Use this for endpoints that should work even without a database.
+    """
+    global SessionLocal
+    if SessionLocal is None:
+        yield None
+        return
+    
+    try:
+        session: AsyncSession = SessionLocal()
+        try:
+            yield session
+        finally:
+            await session.close()
+    except Exception as e:
+        logger.warning("database_session_failed", error=str(e))
+        yield None

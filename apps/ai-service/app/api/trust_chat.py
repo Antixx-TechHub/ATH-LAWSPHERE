@@ -21,7 +21,7 @@ from app.models.ollama_client import get_ollama_client, get_ollama_model_name
 from app.models.groq_client import get_groq_client, GROQ_MODELS
 from app.routing import TrustRouter, AuditLogger, RoutingDecision, ModelProvider
 from app.config import settings
-from app.db import get_db
+from app.db import get_db, get_optional_db
 from app.services import session_store
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -224,7 +224,7 @@ IMPORTANT: The user has attached a document. When answering questions:
 
 
 @router.post("/trust/completions", response_model=TrustChatResponse)
-async def create_trust_chat_completion(request: TrustChatRequest, db: AsyncSession = Depends(get_db)):
+async def create_trust_chat_completion(request: TrustChatRequest, db: Optional[AsyncSession] = Depends(get_optional_db)):
     """
     Create a privacy-first chat completion with full transparency.
     
@@ -672,7 +672,8 @@ async def create_trust_chat_completion(request: TrustChatRequest, db: AsyncSessi
         # Try to persist session, but don't fail if DB is unavailable
         session_id = request.session_id or str(uuid.uuid4())
         try:
-            session_id = await session_store.ensure_session(db, request.session_id, request.user_id)
+            if db is not None:
+                session_id = await session_store.ensure_session(db, request.session_id, request.user_id)
         except Exception as db_error:
             logger.warning("session_store_unavailable", error=str(db_error))
             # Continue without DB persistence - chat still works
@@ -691,29 +692,33 @@ async def create_trust_chat_completion(request: TrustChatRequest, db: AsyncSessi
             routing_time_ms=routing_result.routing_time_ms
         )
 
+
         # Persist last user + assistant messages for resume (optional - don't fail if DB unavailable)
-        try:
-            if request.messages:
-                last_user = request.messages[-1]
+        if db is not None:
+            try:
+                if request.messages:
+                    last_user = request.messages[-1]
+                    await session_store.append_message(
+                        db,
+                        session_id=session_id,
+                        role=last_user.role.value,
+                        content=last_user.content,
+                    )
                 await session_store.append_message(
                     db,
                     session_id=session_id,
-                    role=last_user.role.value,
-                    content=last_user.content,
+                    role=MessageRole.ASSISTANT.value,
+                    content=response_content,
+                    metadata={
+                        "model": model_id,
+                        "trust": response_obj.trust.model_dump(),
+                        "cost": response_obj.cost.model_dump(),
+                    },
                 )
-            await session_store.append_message(
-                db,
-                session_id=session_id,
-                role=MessageRole.ASSISTANT.value,
-                content=response_content,
-                metadata={
-                    "model": model_id,
-                    "trust": response_obj.trust.model_dump(),
-                    "cost": response_obj.cost.model_dump(),  # Store cost for session restoration
-                },
-            )
-            await db.commit()
-        except Exception as persist_error:
+                await db.commit()
+            except Exception as persist_error:
+                logger.warning("message_persistence_failed", error=str(persist_error))
+                # Continue - response already generated
             logger.warning("message_persistence_failed", error=str(persist_error))
             # Continue - response already generated
 

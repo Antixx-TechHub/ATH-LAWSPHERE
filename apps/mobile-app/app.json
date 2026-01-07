@@ -1,0 +1,48 @@
+{
+  "expo": {
+    "name": "LawSphere",
+    "slug": "lawsphere",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "lawsphere",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#319795"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.antixxtechhub.lawsphere"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#319795"
+      },
+      "package": "com.antixxtechhub.lawsphere"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-local-authentication"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "apiUrl": "https://ath-lawsphere.antixxtechhub.in",
+      "aiApiUrl": "https://ai-service-production-870d.up.railway.app",
+      "eas": {
+        "projectId": "YOUR_PROJECT_ID"
+      }
+    }
+  }
+}
